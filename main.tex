@@ -9,23 +9,15 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm, amsfonts}
-% \usepackage{subfig}
 \usepackage{booktabs}
 \usepackage{listings}
 \usepackage{hyperref}
 \usepackage{float}
-\usepackage{minted}
-\usepackage{tikz}
-\usepackage{wrapfig}
-\usepackage{subcaption}
-\newtheorem{theorem}{Theorem}[section]
-\newtheorem{corollary}{Corollary}[theorem]
-\newtheorem{lemma}[theorem]{Lemma}
 
 \parskip = \baselineskip
 \setlength{\parindent}{0pt}
 
-\title{Pareto Theta Vaults}
+\title{Pareto Replicating Theta Vaults}
 
 \author{Mike Wu, Will McTighe \\ \small\texttt{\{mike, will\}@paretolabs.xyz}}
 
@@ -35,8 +27,63 @@
 
 \maketitle
 
+\tableofcontents
+
 \begin{abstract}
+Theta Vaults are a simple on-chain structured product that runs an automated strategy to sell rolling weekly out-the-money covered calls in which the premium is returned to vault participants as yield.
+Traditionally, Theta Vaults face two main challenges: first, they require oracles which can introduce new vulnerabilities; second, the yield is capped by the efficiency of a matching process to find options buyers.
+In this paper, we present the design for Theta Vaults built on top of replicating market makers that approximate a Black-Scholes covered call.
+Beyond covered calls, an ecosystem of efficient and secure options vaults can be built by a similar replication.
 \end{abstract}
+
+\section{Preface}
+
+This paper is a technical introduction to Pareto Replicating Theta Vaults, a redesign of the yield instrument popularized by Ribbon Finance. In the following, we describe how to construct Theta Vaults on top of replicating market makers (RMMs), in which selling a covered call is equivalent to being a liquidity provider. Our primary hypothesis is that the ability of RMMs to replicate a wide array of structured products can be used to design an options ecosystem with token compositionality as a first-class citizen. With regards to Theta Vaults in particular, RMMs offer a oracle-free and auction-free solution that users may find attractive. In the following sections, we first provide background information then present the mechanism underlying the Replicating Theta Vault (RTV).
+
+\paragraph{[6/15/22]} The alpha product for Pareto RTVs is currently under development. Please reach out to \texttt{mike@paretolabs.xyz} if you have any questions.
+
+\section{Background}
+
+\subsection{Constant Function Market Makers}
+
+TODO.
+
+\subsection{Replicating Market Makers}
+
+TODO.
+
+\subsection{Replicating Black-Scholes Covered Calls}
+
+TODO.
+
+\subsection{Theta Vaults}
+
+TODO.
+
+\section{Replicating Theta Vaults}
+
+TODO.
+
+\subsection{Mechanism}
+
+TODO.
+
+\subsection{Options Strategy}
+
+TODO.
+
+\subsection{Fee Structure}
+
+TODO.
+
+
+\section{Limitations and Future Work}
+
+TODO.
+
+\section{Conclusion}
+
+TODO.
 
 \bibliographystyle{unsrt}
 \bibliography{main}
