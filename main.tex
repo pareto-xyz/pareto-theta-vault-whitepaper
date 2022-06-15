@@ -95,35 +95,41 @@ To properly replicate covered calls with theta decay, it is important to optimal
 
 We review the design of Theta Vaults, as implemented by Ribbon Finance and similar protocols. A Theta Vault sells out-the-money covered calls every week ad infinitum.
 
-Each week, a new round begins. Participants deposit the underlying asset into a vault. At fixed intervals throughout a round, the assets are aggregated and placed as collateral to sell covered call options. For instance, Ribbon uses Opyn to mint options tokens (also called oTokens). This process is gas efficient as the vault makes a single transaction to Opyn for thousands of users at once. The covered call tokens are sold for premium via a public auction (Ribbon uses Gnossis). Market makers can buy covered calls, effectively betting that the spot price will exceed the strike. If so, the vault's collaterals are relinquished to the buyers. Otherwise, the collateral is returned to the sellers along with the premium as yield.
+Each week, a new round begins. Participants deposit the underlying asset into a vault. At fixed intervals throughout a round, the assets are aggregated and placed as collateral to sell covered call options. For instance, Ribbon uses Opyn to mint options tokens (also called oTokens). This process is gas efficient as the vault makes a single transaction to Opyn for thousands of users at once. The covered call tokens are sold for premium via a public auction (Ribbon uses Gnossis). Market makers can buy the covered calls, effectively betting that the spot price will exceed the strike. If so, the vault's collaterals are relinquished to the buyers. Otherwise, the collateral is returned to the sellers along with the premium as yield.
 A manager decides on the weekly strategy to set strike price. The manager may be an automated contract (e.g. set strike to be a percentage above current spot price using an oracle) or a priviledged user who can manually set strike price.
 
-Essentially, the yield accrued by users comes from the time value of an option, in other words Theta decay (hence the name). Users of Theta Vaults do not need to actively manage their positions. Their actions are limited to depositing and withdrawing the underlying. The amount of yield that users earn is strictly bounded by the vault's ability to find buyers within a constrained time interval. In Ribbon, Gnossis auctions are open for only one hour. Unmatched short positions produce no yield since no premium is being paid. Much like orderbooks, a traditional marketplace matching buyers and sells is difficult to run efficiently on-chain. In the next section, we propose an alternative design using RMMs.
+Essentially, the yield accrued by users comes from the time value of an option, in other words Theta decay (hence the name). Users of Theta Vaults do not need to actively manage their positions. Their actions are limited to depositing and withdrawing the underlying. The amount of yield that users earn is strictly bounded by the vault's ability to find buyers within a constrained time interval. In Ribbon, Gnossis auctions are open for only one hour. Unmatched short positions produce no yield since no premium is being paid. Much like orderbooks, a traditional marketplace matching buyers and sellers is difficult to run efficiently on-chain. Next, we propose an alternative design using RMMs.
 
 \section{Replicating Theta Vaults}
 
-TODO.
+We propose to offer Theta Vaults through selling covered calls replicated by RMM-01, as first described in \cite{sterrett2022replicating}. In short, doing so would replace the matching of buyers to sellers with rational arbitrage in an AMM pool -- a potentially more efficient design.
 
 \subsection{Mechanism}
 
-TODO.
+The mechanism of a ``Replicating Theta Vault'' (RTV) is largely reminiscent of traditional Theta Vaults, though with some important distinctions.
 
-\subsection{Options Strategy}
+In each round, users seeking yield will deposit a token pair consisting of a risky asset (e.g. Ethereum) and a stable asset (e.g. USDC) into an RMM-01 pool with a one week expiry and a set strike price in return for an LP token. Throughout the round, arbitrageurs will pay fees to trade tokens in the RMM-01 pool to bridge the price gap with external markets like Uniswap or Coinbase. These fees are directly reinvested into the pool's reserves. At the expiry time, users can burn their LP tokens to retrieve liquidity in the token pair. The payoff experienced by users is the premium from a covered call by replication. At the end of the round, the RMM-01 pool expires, and liquidity is either withdrawn by users or automatically moved to a new RMM-01 pool with a different strike price and an expiry date one week from now. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
 
-TODO.
+No auction nor matching process is required. Technically, there are no buyers of said covered calls as no options are truly being sold, only replicated. The opposing end of an RMM market is arbitrageurs. As long as arbitrageurs are making rational trades for alpha, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not given they do not require a marketplace.
 
 \subsection{Fee Structure}
 
-TODO.
+We follow Ribbon's fee model: Pareto's RTV takes a performance fee and a management fee if and only if the vault accrued yield that round. If spot price exceeds strike price (i.e in-the-money), no fees are taken. The performance fee is a percentage of the yield whereas the management fee is a percentage of the assets in the vault. These percentages are set at contract deployment and can be changed only by the contract owner.
 
+\subsection{Benefits}
 
-\section{Limitations and Future Work}
+Beyond what is already been described on swapping buyers for arbitrageurs, there are a few more benefits of the RTV design. First, fees are paid throughout the round, rather than at a fixed point in time (e.g. an auction). For users, this provides a more flexible system for withdrawing capital. Their assets are never locked as collateral into another protocol, and can be withdrawn from RMM-01 pools at any point. Further, since Theta Vaults flood the options market with large options contracts in a consistent schedule, this has unintended consequences in market dynamics. For one, the sudden increase in supply reduces the value of the option being sold. This is not the case in RTVs specifically because premium (a.k.a. fees) are earned over time. Second, since participating in an RTV is providing liquidity to AMM, it has legally distinct from buying or selling options.
 
-TODO.
+\subsection{Limitations}
 
-\section{Conclusion}
+Benefits aside, RTVs propose new challenges of its own. First,
 
-TODO.
+\section{Conclusion and Future Work}
+
+We have provided a technical description for a new design of Theta Vaults built on Replicating Market Makers, aptly named Replicating Theta Vaults. RTVs provide a yield mechanism by which users replicate the premium of selling covered calls by providing liquidity to an token swap pool. The proposed approach has potential capital efficiency benefits at the cost of rebalancing costs.
+An RTV protocol is currently being designed by the Pareto team.
+
+Covered calls are only one structured product that can be replicated by RMM-01. Others include calls, puts, binary options, strangles, condors, etc. Similar vaults can be designed for a larger options ecosystem built on replication.
 
 \bibliographystyle{unsrt}
 \bibliography{main}
