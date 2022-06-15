@@ -5,12 +5,6 @@
 \usepackage{fullpage}
 \usepackage[utf8]{inputenc}
 \usepackage{appendix}
-\usepackage{graphicx}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage{amsthm, amsfonts}
-\usepackage{booktabs}
-\usepackage{listings}
 \usepackage{hyperref}
 \usepackage{float}
 
@@ -50,16 +44,25 @@ We provide an overview for concepts required to understand RTVs. We opt to provi
 
 Constant function market makers (CFMMs) are a family of automated market makers (AMMs) used as token swap mechanisms on public blockchains. Liquidity providers (LPs) lend a token pair (e.g. Ethereum and USDC) to a supply of reserves managed by a smart contract. Users wishing to swap tokens can call the smart contract, paying a small fee that is rewarded to the LPs. However, the contract is programmed to ensure that a function of the token reserves remains constant, hence the name ``constant function''. This function is called the trading function or the invariant.
 
-A common invariant is the product of the two reserves, used by Uniswap \cite{angeris2019analysis,adams2021uniswap} and Balancer \cite{martinelli2019non} among others. To introduce the notation we will carry throughout this paper, let $x, y \in \mathbf{R}_+$ be reserves for a token pair and $\psi: \mathbf{R} \times \mathbf{R} \rightarrow \mathbf{R}$ be an invariant. For a fixed level of liquidity, we have $\psi(x, y) = k$ for a constant $k \in \mathbf{R}$. A trade of $\Delta x$ for $\Delta y$ is allowed if and only if $\psi(x - \Delta x, y + \Delta y) = k$ for the same value $k$. For any AMM, the relative price is a function of the reserves. In this case, the (marginal) price of token $y$ in token $x$ is simply $\left(\frac{y}{x}\right)$. Other invariants include the arithmetic sum ($\psi = x + y$) along with more complex ``mixtures'' of sum and product invariants such as Yieldspace \cite{niemerg2020yieldspace} or Curve \cite{egorov2021automatic}.
+To introduce the notation we will carry throughout this paper, let $x, y \in \mathbf{R}_+$ be reserves for two tokens X and Y, and $\psi: \mathbf{R} \times \mathbf{R} \rightarrow \mathbf{R}$ be an invariant. For a fixed level of liquidity, we have $\psi(x, y) = k$ for a constant $k \in \mathbf{R}$. A trade of $\Delta x$ of token X for $\Delta y$ of token Y is allowed if and only if $\psi(x - \Delta x, y + \Delta y) = k$ for the same value $k$. For any CFMM, the (marginal) price of token Y in token X is a function of the reserves:
+\[S(x) = \left(-\frac{dy}{dx}\right).\]
+A common invariant is the product of the two reserves ($\psi = x\cdot y$), used by Uniswap \cite{angeris2019analysis,adams2021uniswap} and Balancer \cite{martinelli2019non} among others.
+In this case, the marginal price is simply $\left(\frac{y}{x}\right)$.
+Other invariants include the arithmetic sum ($\psi = x + y$) along with more complex ``mixtures'' of sum and product invariants such as Yieldspace \cite{niemerg2020yieldspace} or Curve \cite{egorov2021automatic}.
 
 CFMMs and the broader class of AMMs, stand as an alternative to more traditional orderbook markets that require matching between buyers and sellers at various prices. CFMMs require no middlemen, expose transparent prices, have efficiency benefits as trades execute immediately, are oracle-free and hence less vulnerable to malicious actors, and are more robust under black-swan events. Due to these advantages, CFMMs have grown to dominant the swap market, with Uniswap being the largest DEX and fourth largest exchange.
-Much more can be said about CFMMs, including impermanent loss and the structure of trading fees, but for this discussion, we recommend reading \cite{angeris2019analysis}.
+% Much more can be said about CFMMs, including impermanent loss and the structure of trading fees, but for this discussion, we recommend reading \cite{angeris2019analysis}.
 
 \subsection{Replicating Market Makers}
 
-TODO.
+Given a CFMM with a specific invariant, what is the payoff to its liquidity providers? Generally, given $x$ units of a token valued at price $p_x$ on some reference market, my payoff is simply what I can sell my assets for. In this case,  $p_x \cdot x$. Given two tokens with $x$ units of X and $y$ units of Y, we can write the total payoff as:
+\[V(p_x, p_y) = p_x\cdot x + p_y \cdot y = p_x (x + S(x)y_\psi(x))\]
+where $S(x)$ is the marginal price and the notation $y_\psi(x)$ represents solving for $y$ in terms of $x$ with respect to the invariant $\psi$.
+The product invariant has a particular payoff function that suffers from divergence loss \cite{angeris2019analysis}. In other words, if the price does not deviate too much from the initial price that a LP deposited tokens at, the LP makes a profit. However, if the price changes, the LP loses money as a function of the magnitude of the price change. For LPs with a directional belief in the token price, such a payoff is not optimal.
 
-\subsection{Options Overview}
+This begs the question: given a payoff function, what is corresponding invariant such that being an LP in that market would provide said payoff? Above, we showed how to derive a payoff $V$ from an invariant $\psi$
+
+\subsection{Options Review}
 
 TODO.
 
