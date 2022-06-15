@@ -88,7 +88,17 @@ In Section~\ref{sec:rmm}, we showed a technique to derive invariants from payoff
 \[y - K\Phi(\Phi^{-1}(1-x)-\sigma\sqrt{\tau}) = k\]
 where $\Phi$ is a Gaussian CDF and all other variables are as defined in previous sections. The marginal price can be written as $S(x) = Ke^{\Phi^{-1}(1-x)\sigma\sqrt{\tau}}e^{-\frac{1}{2}\sigma^2\tau}$.
 
-To properly replicate covered calls with theta decay, it is important to optimally set the (swap) fee. We leave the details of experiments with fees to the RMM-01 whitepaper. Unlike Uniswap, which is primary meant for traders to swap tokens, the primary users of RMM-01 are LPs who seek to obtain covered call payoffs. The other end of this market is dominated by arbitrageurs who seek to close the price gap between RMM-01 and other markets such as Uniswap. Through arbitrage trades, fees accumulate to LPs, approximating the true covered call premium. That is, there exists a zero-sum duality  between LPs and arbitrageurs. RMMs take advantage of this for replication.
+To properly replicate covered calls with theta decay, it is important to optimally set the (swap) fee. We leave the details of experiments with fees to the RMM-01 whitepaper. Unlike Uniswap, which is primary meant for traders to swap tokens, the primary users of RMM-01 are LPs who seek to obtain covered call payoffs. The other end of this market is dominated by arbitrageurs who seek to close the price gap between RMM-01 and other markets such as Uniswap. Through arbitrage trades, fees accumulate to LPs, approximating the true covered call premium. That is, there exists a zero-sum duality  between LPs and arbitrageurs. RMMs take advantage of this duality for replication.
+
+\section{Theta Vaults}
+\label{sec:theta}
+
+We review the design of Theta Vaults, as implemented by Ribbon Finance and similar protocols. A Theta Vault sells out-the-money covered calls every week ad infinitum.
+
+Each week, a new round begins. Participants deposit the underlying asset into a vault. At fixed intervals throughout a round, the assets are aggregated and placed as collateral to sell covered call options. For instance, Ribbon uses Opyn to mint options tokens (also called oTokens). This process is gas efficient as the vault makes a single transaction to Opyn for thousands of users at once. The covered call tokens are sold for premium via a public auction (Ribbon uses Gnossis). Market makers can buy covered calls, effectively betting that the spot price will exceed the strike. If so, the vault's collaterals are relinquished to the buyers. Otherwise, the collateral is returned to the sellers along with the premium as yield.
+A manager decides on the weekly strategy to set strike price. The manager may be an automated contract (e.g. set strike to be a percentage above current spot price using an oracle) or a priviledged user who can manually set strike price.
+
+Essentially, the yield accrued by users comes from the time value of an option, in other words Theta decay (hence the name). Users of Theta Vaults do not need to actively manage their positions. Their actions are limited to depositing and withdrawing the underlying. The amount of yield that users earn is strictly bounded by the vault's ability to find buyers within a constrained time interval. In Ribbon, Gnossis auctions are open for only one hour. Unmatched short positions produce no yield since no premium is being paid. Much like orderbooks, a traditional marketplace matching buyers and sells is difficult to run efficiently on-chain. In the next section, we propose an alternative design using RMMs.
 
 \section{Replicating Theta Vaults}
 
