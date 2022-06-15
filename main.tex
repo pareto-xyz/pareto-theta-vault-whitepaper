@@ -44,19 +44,26 @@ This paper is a technical introduction to Pareto Replicating Theta Vaults, a red
 
 \section{Background}
 
+We provide an overview for concepts required to understand RTVs. We opt to provide a high-level explanation and leave a more mathematical treatment to the cited work.
+
 \subsection{Constant Function Market Makers}
 
-TODO.
+Constant function market makers (CFMMs) are a family of automated market makers (AMMs) used as token swap mechanisms on public blockchains. Liquidity providers (LPs) lend a token pair (e.g. Ethereum and USDC) to a supply of reserves managed by a smart contract. Users wishing to swap tokens can call the smart contract, paying a small fee that is rewarded to the LPs. However, the contract is programmed to ensure that a function of the token reserves remains constant, hence the name ``constant function''. This function is called the trading function or the invariant.
+
+A common invariant is the product of the two reserves, used by Uniswap \cite{angeris2019analysis,adams2021uniswap} and Balancer \cite{martinelli2019non} among others. To introduce the notation we will carry throughout this paper, let $x, y \in \mathbf{R}_+$ be reserves for a token pair and $\psi: \mathbf{R} \times \mathbf{R} \rightarrow \mathbf{R}$ be an invariant. For a fixed level of liquidity, we have $\psi(x, y) = k$ for a constant $k \in \mathbf{R}$. A trade of $\Delta x$ for $\Delta y$ is allowed if and only if $\psi(x - \Delta x, y + \Delta y) = k$ for the same value $k$. For any AMM, the relative price is a function of the reserves. In this case, the (marginal) price of token $y$ in token $x$ is simply $\left(\frac{y}{x}\right)$. Other invariants include the arithmetic sum ($\psi = x + y$) along with more complex ``mixtures'' of sum and product invariants such as Yieldspace \cite{niemerg2020yieldspace} or Curve \cite{egorov2021automatic}.
+
+CFMMs and the broader class of AMMs, stand as an alternative to more traditional orderbook markets that require matching between buyers and sellers at various prices. CFMMs require no middlemen, expose transparent prices, have efficiency benefits as trades execute immediately, are oracle-free and hence less vulnerable to malicious actors, and are more robust under black-swan events. Due to these advantages, CFMMs have grown to dominant the swap market, with Uniswap being the largest DEX and fourth largest exchange.
+Much more can be said about CFMMs, including impermanent loss and the structure of trading fees, but for this discussion, we recommend reading \cite{angeris2019analysis}.
 
 \subsection{Replicating Market Makers}
 
 TODO.
 
-\subsection{Replicating Black-Scholes Covered Calls}
+\subsection{Options Overview}
 
 TODO.
 
-\subsection{Theta Vaults}
+\subsection{Replicating Black-Scholes Covered Calls}
 
 TODO.
 
