@@ -58,15 +58,21 @@ CFMMs and the broader class of AMMs, stand as an alternative to more traditional
 Given a CFMM with a specific invariant, what is the payoff to its liquidity providers? Generally, given $x$ units of a token valued at price $p_x$ on some reference market, my payoff is simply what I can sell my assets for. In this case,  $p_x \cdot x$. Given two tokens with $x$ units of X and $y$ units of Y, we can write the total payoff as:
 \[V(p_x, p_y) = p_x\cdot x + p_y \cdot y = p_x (x + S(x)y_\psi(x))\]
 where $S(x)$ is the marginal price and the notation $y_\psi(x)$ represents solving for $y$ in terms of $x$ with respect to the invariant $\psi$.
-The product invariant has a particular payoff function that suffers from divergence loss \cite{angeris2019analysis}. In other words, if the price does not deviate too much from the initial price that a LP deposited tokens at, the LP makes a profit. However, if the price changes, the LP loses money as a function of the magnitude of the price change. For LPs with a directional belief in the token price, such a payoff is not optimal.
+Altogether, $S(x)y_\psi(x)$ is the amount of token X we can get for $y$ units of token Y in the CFMM.
+The product invariant has a payoff function that suffers from divergence loss \cite{angeris2019analysis}. If the price does not deviate too much from the initial price that a LP deposited tokens at, the LP makes a profit. However, if the price changes, the LP loses money that scales with the magnitude of the price change. For LPs with a directional belief in the token price, such a payoff is not optimal.
 
-This begs the question: given a payoff function, what is corresponding invariant such that being an LP in that market would provide said payoff? Above, we showed how to derive a payoff $V$ from an invariant $\psi$
+This begs the question: given a payoff function, what is corresponding invariant such that being an LP in that market would provide said payoff? We can imagine all kinds of interesting payoff functions that might be attractive to LPs seeking to hedge or take on risk.  Above, we showed how to derive a payoff $V$ from an invariant $\psi$, but what about deriving an invariant from a payoff? This is the core concept behind ``Replicating Market Makers'' or RMMs.
+
+RMMs \cite{angeris2021replicating} show that for all payoff functions $V$ that satisfy a set of mathematical properties\footnote{The constraints are non-negativity, concavity, and 1-homogeneity, with the final being the strictest.}, one can derive an invariant by solving a convex optimization problem,
+\[ \psi_V(x, y) = \inf_{p_x, p_y} \{ p_x \cdot x + p_y \cdot y - V(p_x, p_y) \}. \]
+The method goes further to show that the payoff function and the invariant are Fenchel conjugates of one another, a surprising result. So, to enable LPs to achieve a payoff $V$, one can design a CFMM with the invariant $\psi_V$. We say that $\psi_V$ ``replicates'' the payoff $V$. In Section~\ref{sec:coveredcall}, we will focus on an RMM that replicates the payoff of a covered call option.
 
 \subsection{Options Review}
 
 TODO.
 
 \subsection{Replicating Black-Scholes Covered Calls}
+\label{sec:coveredcall}
 
 TODO.
 
