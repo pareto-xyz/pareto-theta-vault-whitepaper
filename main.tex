@@ -69,7 +69,11 @@ The method goes further to show that the payoff function and the invariant are F
 
 \subsection{Options Review}
 
-TODO.
+Before then, we quickly review the basics of a covered call. Broadly, an option is a derivative instrument around the right to buy or sell an underlying asset if its price is within a pre-specified range. The buyer of an option pays a premium to the seller in exchange for that right. A \textit{call} option is a specific kind of option with a set ``strike price'' such that if the underlying asset price (also called the spot price) is above the strike, then the buyer may ``exercise'' the option, meaning purchase the underlying at the strike -- not the current price which is higher than the strike price. It is required for the seller to own the underlying asset upfront when selling a call option. Only if the option is exercised must the seller purchase and transfer the underlying asset to the buyer. Additionally, options have expiry dates after which the contract between the buyer and seller no longer hold. We focus on European options in which the buyer can only exercise the option at the expiry date, not before.
+
+Pricing an option means setting the value of the premium to the expected value of the profits from the option being exercised. In generality, this is difficult to  reason about. The best practice is to assume the  Black-Scholes model which makes simplifications to asset returns, volatility, and market dynamics among many others. Despite not being faithful to real world markets, the model is still useful to determine rational prices of options. The Black-Scholes formula defines the price of a call option as
+\[\textup{premium} = p N(d_1) - K e^{-rt} N(d_2)\]
+where $d_1 = \left( \frac{\log(p/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}\right)$ and $d_2 = d_1 - \sigma\sqrt{\tau}$. Notation-wise, $p$ is the spot price, $K$  the strike price, $\tau = T-t$ where $T$ is the expiry time and $t$ the current time, $r$ the risk-free rate (assumed as constant), and $\sigma$ the implied volatility (assumed as constant).
 
 \subsection{Replicating Black-Scholes Covered Calls}
 \label{sec:coveredcall}
