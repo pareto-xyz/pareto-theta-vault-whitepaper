@@ -54,6 +54,7 @@ CFMMs and the broader class of AMMs, stand as an alternative to more traditional
 % Much more can be said about CFMMs, including impermanent loss and the structure of trading fees, but for this discussion, we recommend reading \cite{angeris2019analysis}.
 
 \subsection{Replicating Market Makers}
+\label{sec:rmm}
 
 Given a CFMM with a specific invariant, what is the payoff to its liquidity providers? Generally, given $x$ units of a token valued at price $p_x$ on some reference market, my payoff is simply what I can sell my assets for. In this case,  $p_x \cdot x$. Given two tokens with $x$ units of X and $y$ units of Y, we can write the total payoff as:
 \[V(p_x, p_y) = p_x\cdot x + p_y \cdot y = p_x (x + S(x)\cdot y_\psi(x))\]
@@ -63,7 +64,7 @@ The product invariant has a payoff function that suffers from divergence loss \c
 
 This begs the question: given a payoff function, what is corresponding invariant such that being an LP in that market would provide said payoff? We can imagine all kinds of interesting payoff functions that might be attractive to LPs seeking to hedge or take on risk.  Above, we showed how to derive a payoff $V$ from an invariant $\psi$, but what about deriving an invariant from a payoff? This is the core concept behind ``Replicating Market Makers'' or RMMs.
 
-RMMs \cite{angeris2021replicating} show that for all payoff functions $V$ that satisfy a set of mathematical properties\footnote{The constraints are non-negativity, concavity, and 1-homogeneity, with the final being the strictest.}, one can derive an invariant by solving a convex optimization problem,
+RMMs \cite{angeris2021replicating} show that for all payoff functions $V$ that are non-negative, concave, and 1-homogenous (with this final one being the strictest), one can derive an invariant by solving a convex optimization problem,
 \[ \psi_V(x, y) = \inf_{p_x, p_y} \{ p_x \cdot x + p_y \cdot y - V(p_x, p_y) \}. \]
 The method goes further to show that the payoff function and the invariant are Fenchel conjugates of one another, a surprising result. So, to enable LPs to achieve a payoff $V$, one can design a CFMM with the invariant $\psi_V$. We say that $\psi_V$ ``replicates'' the payoff $V$. In Section~\ref{sec:coveredcall}, we will focus on an RMM that replicates the payoff of a covered call option.
 
@@ -83,7 +84,11 @@ Finally, a \textit{covered call} is a structured product in which one sells a ca
 \subsection{Replicating Black-Scholes Covered Calls}
 \label{sec:coveredcall}
 
-TODO.
+In Section~\ref{sec:rmm}, we showed a technique to derive invariants from payoff functions assuming three constraints on the payoff function. We now observe that the payoff of a covered call is indeed non-negative, concave, and 1-homogenous. In other words, there exists an invariant that replicates the covered call premium. The Primitive RMM-01\footnote{Built by the Primitive team. See \url{https://primitive.xyz/whitepaper-rmm-01.pdf}.} invariant is
+\[y - K\Phi(\Phi^{-1}(1-x)-\sigma\sqrt{\tau}) = k\]
+where $\Phi$ is a Gaussian CDF and all other variables are as defined in previous sections. The marginal price can be written as $S(x) = Ke^{\Phi^{-1}(1-x)\sigma\sqrt{\tau}}e^{-\frac{1}{2}\sigma^2\tau}$.
+
+To properly replicate covered calls with theta decay, it is important to optimally set the (swap) fee. We leave the details of experiments with fees to the RMM-01 whitepaper. Unlike Uniswap, which is primary meant for traders to swap tokens, the primary users of RMM-01 are LPs who seek to obtain covered call payoffs. The other end of this market is dominated by arbitrageurs who seek to close the price gap between RMM-01 and other markets such as Uniswap. Through arbitrage trades, fees accumulate to LPs, approximating the true covered call premium. That is, there exists a zero-sum duality  between LPs and arbitrageurs. RMMs take advantage of this for replication.
 
 \section{Replicating Theta Vaults}
 
