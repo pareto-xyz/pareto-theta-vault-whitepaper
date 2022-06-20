@@ -27,7 +27,7 @@
 
 \begin{abstract}
 Theta Vaults are a simple on-chain automated structured product that sells rolling weekly out-the-money covered calls with premiums returned to vault depositors as yield.
-Traditionally, Theta Vaults face two main challenges: First, the yield is capped by the efficiency of a matching process to find options buyers. Second, they often require oracles which can introduce vulnerabilities.
+Traditionally, Theta Vaults face two main challenges: first, the yield is capped by the efficiency of a matching process to find options buyers; second, they often require oracles which can introduce vulnerabilities.
 In this paper, we present a design for Theta Vaults built on top of replicating market makers (RMMs), an extension of automated market makers pioneered by Primitive, that replicates a Black-Scholes covered call payoff.
 Beyond covered calls, an ecosystem of efficient and secure options vaults can be built by a similar replication technique.
 % I'm not sure that Ribbon requires an Oracle, it depends if Opyn's oTokens do, I need to check this.
