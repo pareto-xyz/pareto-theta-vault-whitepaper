@@ -109,9 +109,21 @@ We propose to offer Theta Vaults through selling covered calls replicated by RMM
 
 The mechanism for ``Replicating Theta Vaults'' (RTV) is similar to traditional Theta Vaults, with some important distinctions.
 
-In each round, users seeking yield will deposit a token pair consisting of a risky asset (e.g. Ethereum) and a stable asset (e.g. USDC) into an RMM-01 pool with a one week expiry and a set strike price in return for an LP token. Throughout the round, arbitrageurs will pay fees to trade tokens in the RMM-01 pool to bridge the price gap with external markets like Uniswap or Coinbase. These fees are directly reinvested into the pool's reserves. At the expiry time, users can burn their LP tokens to retrieve liquidity in the token pair. The payoff earnt by users is the premium from a covered call by replication. At the end of the round, the RMM-01 pool expires, and liquidity is either withdrawn by users or automatically moved to a new RMM-01 pool with a different strike price and an expiry date one week from now. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
+In each round (week), users seeking yield will deposit a token pair consisting of a risky asset (e.g. ETH) and a stable asset (e.g. USDC) into the Pareto Vault. [Twice a week], Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price in return for an LP token. Throughout the round, arbitrageurs will pay fees to trade tokens in the RMM-01 pool to bridge the price gap with external markets like Uniswap or Coinbase. These fees are directly reinvested into the pool's reserves. The net fees earnt in the pool replicates the premium from a covered call. At the end of the round, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically moved to a new RMM-01 pool with a different strike price and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
 
-No auction nor matching process is required. Technically, there are no buyers of the covered calls as no options are being sold, their payoffs only replicated. The opposing end of an RMM market is arbitrageurs. As long as arbitrageurs are making rational trades for alpha, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not given they do not require buyers, only rational arbitrage.
+No auction nor matching process is required. Technically, there are no buyers of the covered calls as no options are being sold, their payoffs only replicated. The counterparty of an RMM market is arbitrageurs. As long as arbitrageurs are making rational trades for alpha, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not given they do not require buyers, only rational arbitrage.
+
+Beyond this, there are several important design elements:
+\begin{itemize}
+    \item Deposit and withdrawal times: Pareto Vaults will deposit and withdraw from Primitive RMM-01 pools twice a week - each Tuesday and Friday at [5pm UTC]. Any user that wishes to withdraw at that time, must input their request with the Pareto protocol beforehand. Limiting withdrawals to twice weekly improves gas efficiency. As we expand to L2s, we hope to offer more frequent deposit and withdrawal opportunities.
+    \item Vault Tokens: Initially, we will offer only a ETH-USDC vault. Once Pareto launches on mainnet, we will expand our offering to other Top 20 tokens.
+    \item Multi Token Deposits: In the Alpha, users will have to deposit ETH and USDC, this creates friction for users and over time, we plan to remove the need for users to deposit USDC.
+    \item Receipt Tokens: Users will not receive vault tokens by default, however we will reconsider this over time.
+    \item Rebalancing: When a RMM-01 vault expires, all assets will be either the risky asset (e.g. ETH) or the stable asset (e.g. USDC). However, when depositing in a new pool, one needs both risky and stable assets. Our initial approach to handling this is initiating mispriced pools. This is discussed in further detail in \ref{Challenges} [Add more data].
+    \item Expiry Date Selection: Pools will expire each Friday at [5pm UTC].
+    \item Strike Selection: [TBD]
+    \item Implied Volatility Selection: [TBD]
+\end{itemize}
 
 \subsection{Fee Structure}
 
@@ -119,14 +131,16 @@ We follow Ribbon's fee model: Pareto's RTV takes a performance fee and a managem
 
 \subsection{Benefits}
 
-Beyond what is already described on swapping buyers for arbitrageurs, there are additional benefits of the RTV design. First, fees are paid throughout the round, rather than at a fixed point in time (e.g. an auction). For users, this provides a more flexible system for withdrawing capital. Their assets are never locked as collateral into another protocol, and can be withdrawn from RMM-01 pools at any point. Further, since Theta Vaults flood the options market with large options contracts in a consistent schedule, this has unintended consequences in market dynamics. For one, the sudden increase in supply reduces the premiums of the options sold. This is not the case in RTVs because premiums (a.k.a. swap fees) are earned over time. Second, since participating in an RTV is providing liquidity to AMM and there is no counterparty, we understand this is legally distinct from buying or selling options.
+Beyond what is already described on swapping buyers for arbitrageurs, there are additional benefits of the RTV design. First, Primitive can be daunting for retail users, it requires them to choose a strike price, expiry date and implied volatility for their deposits. Implied volatility, in particular, is difficult to understand. Pareto aims to abstract away this complexity from users to help the Primitive ecosystem grow. Second, fees are paid throughout the round, rather than at a fixed point in time (e.g. an auction). For Pareto users, this allows us to offer a flexible system for withdrawing capital - twice a week rather than once a week in Traditional Theta Vault protocols. Further, since Theta Vaults flood the options market with many options contracts at the same time each week, this has unintended consequences in market dynamics. For one, the sudden increase in supply reduces the premiums of the options sold. This is not the case in RTVs because premiums (a.k.a. swap fees) are earned over time. Second, since participating in an RTV is providing liquidity to AMM and there is no counterparty, we understand this is legally distinct from buying or selling options.
 
-\subsection{Limitations}
+\subsection{Challenges}
+\label{Challenges}
 
 Benefits aside, RTVs have their own challenges. First, it still requires strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. As such, RTVs would still benefit from a privileged manager role.
 
-
 Second, there is the challenge of ``rebalancing''. When an RMM-01 pool expires, assets are almost all either risky or stable token depending on whether the spot price is above or below the strike. As such, when LPs exchange their LP tokens for assets, they will receive mostly a single asset. This poses a fundamental challenge for Theta Vaults, as providing liquidity for the next round requires a balance of both risky and stable assets. Users would need to swap a portion of one asset for another to participate in the next round. For a sufficiently large vault, an aligned demand for swaps would result in significant slippage. Potential solutions to rebalancing include Pareto dynamically routing swaps to find the best price (e.g. the 1inch protocol), or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}.
+
+Third, we are reliant on Oracle data for Strike and Implied Volatility selection. [TBD solution]. Finally, Primitive pools must achieve a minimum scale for accurate replication, we have seen this at very low levels of liquidity (i.e. [xx]) and this should be even lower on Layer 2s when gas costs are lower.
 
 \section{Conclusion and Future Work}
 
