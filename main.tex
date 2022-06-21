@@ -7,6 +7,8 @@
 \usepackage{appendix}
 \usepackage{hyperref}
 \usepackage{float}
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
 
 \parskip = \baselineskip
 \setlength{\parindent}{0pt}
@@ -24,33 +26,34 @@
 \tableofcontents
 
 \begin{abstract}
-Theta Vaults are a simple on-chain structured product that runs an automated strategy to sell rolling weekly out-the-money covered calls in which the premium is returned to vault participants as yield.
-Traditionally, Theta Vaults face two main challenges: first, they require oracles which can introduce new vulnerabilities; second, the yield is capped by the efficiency of a matching process to find options buyers.
-In this paper, we present the design for Theta Vaults built on top of replicating market makers that approximate a Black-Scholes covered call.
-Beyond covered calls, an ecosystem of efficient and secure options vaults can be built by a similar replication.
+Theta Vaults are a simple on-chain automated structured product that sells rolling weekly out-the-money covered calls with premiums returned to vault depositors as yield.
+Traditionally, Theta Vaults face two main challenges: first, the yield is capped by the efficiency of a matching process to find options buyers; second, they often require oracles which can introduce vulnerabilities.
+In this paper, we present a design for Theta Vaults built on top of replicating market makers (RMMs), an extension of automated market makers pioneered by Primitive, that replicates a Black-Scholes covered call payoff.
+Beyond covered calls, an ecosystem of efficient and secure options vaults can be built by a similar replication technique.
+% I'm not sure that Ribbon requires an Oracle, it depends if Opyn's oTokens do, I need to check this.
 \end{abstract}
 
 \section{Preface}
 
-This paper is a technical introduction to Pareto Replicating Theta Vaults, a redesign of the yield instrument popularized by Ribbon Finance. In the following, we describe how to construct Theta Vaults on top of replicating market makers (RMMs), in which selling a covered call is equivalent to being a liquidity provider. Our primary hypothesis is that the ability of RMMs to replicate a wide array of structured products can be used to design an options ecosystem with token compositionality as a first-class citizen. With regards to Theta Vaults in particular, RMMs offer a permission-less and auction-free solution that users may find attractive. In the following sections, we first provide background information then present the mechanism underlying the Replicating Theta Vault (RTV).
+This paper is a technical introduction to Pareto Replicating Theta Vaults, a redesign of the yield instrument popularized by Ribbon Finance. In the following, we describe how to construct Theta Vaults on top of replicating market makers (RMMs), in which selling a covered call is equivalent to being a liquidity provider. Our primary hypothesis is that the ability of RMMs to replicate a wide array of structured products can be used to design an options ecosystem with token composability as a first-class citizen. For Theta Vaults, RMMs offer a permission-less and auction-free solution that users may find attractive. In the following sections, we first provide background information then present the mechanism underlying the Replicating Theta Vault (RTV).
 
 \paragraph{[6/15/22]} The alpha product for Pareto RTVs is currently under development. Please reach out to \texttt{team@paretolabs.xyz} if you have any questions.
 
 \section{Background}
 
-We provide an overview for concepts required to understand RTVs. We opt to provide a high-level explanation and leave a more mathematical treatment to the cited work.
+We provide an overview of concepts required to understand RTVs. We offer a high-level explanation and leave a more mathematical treatment to the cited work.
 
 \subsection{Constant Function Market Makers}
 
 Constant function market makers (CFMMs) are a family of automated market makers (AMMs) used as token swap mechanisms on public blockchains. Liquidity providers (LPs) lend a token pair (e.g. Ethereum and USDC) to a supply of reserves managed by a smart contract. Users wishing to swap tokens can call the smart contract, paying a small fee that is rewarded to the LPs. However, the contract is programmed to ensure that a function of the token reserves remains constant, hence the name ``constant function''. This function is called the trading function or the invariant.
 
-To introduce the notation we will carry throughout this paper, let $x, y \in \mathbf{R}_+$ be reserves for two tokens X and Y, and $\psi: \mathbf{R} \times \mathbf{R} \rightarrow \mathbf{R}$ be an invariant. For a fixed level of liquidity, we have $\psi(x, y) = k$ for a constant $k \in \mathbf{R}$. A trade of $\Delta x$ of token X for $\Delta y$ of token Y is allowed if and only if $\psi(x - \Delta x, y + \Delta y) = k$ for the same value $k$. For any CFMM, the (marginal) price of token Y in token X is a function of the reserves:
+To introduce the notation we use throughout this paper, let $x, y \in \mathbf{R}_+$ be reserves for two tokens X and Y, and $\psi: \mathbf{R} \times \mathbf{R} \rightarrow \mathbf{R}$ be an invariant. For a fixed level of liquidity, we have $\psi(x, y) = k$ for a constant $k \in \mathbf{R}$. A trade of $\Delta x$ of token X for $\Delta y$ of token Y is allowed if and only if $\psi(x - \Delta x, y + \Delta y) = k$ for the same value $k$. For any CFMM, the (marginal) price of token Y in token X is a function of the reserves:
 \[S(x) = \left(-\frac{dy}{dx}\right).\]
 A common invariant is the product of the two reserves ($\psi = x\cdot y$), used by Uniswap \cite{angeris2019analysis,adams2021uniswap} and Balancer \cite{martinelli2019non} among others.
 In this case, the marginal price is simply $\left(\frac{y}{x}\right)$.
 Other invariants include the arithmetic sum ($\psi = x + y$) along with more complex ``mixtures'' of sum and product invariants such as Yieldspace \cite{niemerg2020yieldspace} or Curve \cite{egorov2021automatic}.
 
-CFMMs and the broader class of AMMs, stand as an alternative to more traditional orderbook markets that require matching between buyers and sellers at various prices. CFMMs require no middlemen, expose transparent prices, have efficiency benefits as trades execute immediately, are oracle-free and hence less vulnerable to malicious actors, and are more robust under black-swan events. Due to these advantages, CFMMs have grown to dominant the swap market, with Uniswap being the largest DEX and fourth largest exchange.
+CFMMs and the broader class of AMMs, stand as an alternative to more traditional orderbook markets that require matching between buyers and sellers at various prices. CFMMs require no middlemen, expose transparent prices, have efficiency benefits as trades execute immediately, are oracle-free and hence less vulnerable to malicious actors, and are more robust under black-swan events. Due to these advantages, CFMMs have grown to dominate the swap market, with Uniswap being the largest DEX and fourth largest exchange.
 % Much more can be said about CFMMs, including impermanent loss and the structure of trading fees, but for this discussion, we recommend reading \cite{angeris2019analysis}.
 
 \subsection{Replicating Market Makers}
@@ -62,24 +65,33 @@ where $S(x)$ is the marginal price and the notation $y_\psi(x)$ represents solvi
 Altogether, $S(x)\cdot y_\psi(x)$ is the amount of token X we can get for $y$ units of token Y in the CFMM.
 The product invariant has a payoff function that suffers from divergence loss \cite{angeris2019analysis}. If the price does not deviate too much from the initial price that a LP deposited tokens at, the LP makes a profit. However, if the price changes, the LP loses money that scales with the magnitude of the price change. For LPs with a directional belief in the token price, such a payoff is not optimal.
 
-This begs the question: given a payoff function, what is corresponding invariant such that being an LP in that market would provide said payoff? We can imagine all kinds of interesting payoff functions that might be attractive to LPs seeking to hedge or take on risk.  Above, we showed how to derive a payoff $V$ from an invariant $\psi$, but what about deriving an invariant from a payoff? This is the core concept behind ``Replicating Market Makers'' or RMMs.
+This begs the question: given a desired LP payoff function, what is the corresponding invariant to achieve that payoff function? We can imagine all kinds of interesting payoff functions that might be attractive to LPs seeking to hedge or take on risk.  Above, we showed how to derive a payoff function $V$ from an invariant $\psi$. "Replicating Market Makers" (RMMs) showed us how to do the opposite, that is derive an invariant from a payoff function.
 
-RMMs \cite{angeris2021replicating} show that for all payoff functions $V$ that are non-negative, concave, and 1-homogenous (with this final one being the strictest), one can derive an invariant by solving a convex optimization problem,
+RMMs \cite{angeris2021replicating} show that for all payoff functions $V$ that are non-negative, concave, and 1-homogenous (this final condition is the strictest), one can derive an invariant by solving a convex optimization problem,
 \[ \psi_V(x, y) = \inf_{p_x, p_y} \{ p_x \cdot x + p_y \cdot y - V(p_x, p_y) \}. \]
 The method goes further to show that the payoff function and the invariant are Fenchel conjugates of one another, a surprising result. So, to enable LPs to achieve a payoff $V$, one can design a CFMM with the invariant $\psi_V$. We say that $\psi_V$ ``replicates'' the payoff $V$. In Section~\ref{sec:coveredcall}, we will focus on an RMM that replicates the payoff of a covered call option.
 
 \subsection{Options Review}
 
-Before then, we quickly review the basics of a covered call. Broadly, an option is a derivative instrument around the right to buy or sell an underlying asset if its price is within a pre-specified range. The buyer of an option pays a premium to the seller in exchange for that right. A \textit{call} option is a specific kind of option with a set ``strike price'' such that if the underlying asset price (also called the spot price) is above the strike, then the buyer may ``exercise'' the option, meaning purchase the underlying at the strike. Critically, this is less than the spot price meaning the buyer makes profit. It is not required for the seller to own the underlying asset upfront when selling a call. Only if the option is exercised must the seller purchase and transfer the underlying asset to the buyer. Additionally, options have expiry times after which the contract between the buyer and seller no longer holds. We focus on European options in which the buyer can only exercise at the expiry time, not before.
+Before then, we review the basics of a covered call. An option is a derivative instrument with the right to buy or sell an underlying asset at a pre-determined price (its strike price). The buyer of an option pays a premium to the seller in exchange for that right.
+
+A \textit{call} option is an option with the right to buy an asset at a pre-determined ``strike price'' such that if the underlying asset price (also called the spot price) is above the strike, then the buyer may ``exercise'' the option, meaning purchase the underlying asset at the strike price. Critically, this is less than the spot price meaning the buyer immediately makes profit. It is not required for the seller to own the underlying asset upfront when selling a call. Only if the option is exercised must the seller purchase and transfer the underlying asset to the buyer. Additionally, options have expiry times after which the contract between the buyer and seller no longer holds. We focus on European options in which the buyer can only exercise at the expiry time, not before (as with the American option).
 
 Pricing an option means setting the value of the premium to the expected value of the profits from the option being exercised. In generality, this is difficult to  reason about. The best practice is to assume the  Black-Scholes model which makes simplifications to asset returns, volatility, and market dynamics among many others. Despite not being faithful to real world markets, the model is still useful to determine rational prices of options. The Black-Scholes formula defines the price of a call option as
 \[\textup{premium} = p N(d_1) - K e^{-rt} N(d_2)\]
 where $d_1 = \left( \frac{\log(p/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}\right)$ and $d_2 = d_1 - \sigma\sqrt{\tau}$. Notation-wise, $p$ is the spot price, $K$  the strike price, $\tau = T-t$ where $T$ is the expiry time and $t$ the current time, $r$ the risk-free rate (assumed as constant), and $\sigma$ the implied volatility (assumed as constant).
 
-A property of options is that its value decreases as time approaches the expiry time, also called ``theta decay''. Intuitively, an option with more time has more potential for favorable price fluctuation, which is valuable to the buyer (e.g. it could be that tomorrow the price of a call option exceeds the strike at which point the buyer can exercise). This benefit is priced into the Black-Scholes model, and hence priced into the premium paid by the buyer.
+A property of options is that its value decreases as time approaches the expiry time, also called ``Theta decay''. Intuitively, an option with more time has more potential for favorable price fluctuation, which is valuable to the buyer (e.g. it could be that tomorrow the price of a call option exceeds the strike at which point the buyer can exercise). This benefit is priced into the Black-Scholes model, and hence priced into the premium paid by the buyer.
 % That expiry time ($\tau = 0$), the theta value is zero.
 
-Finally, a \textit{covered call} is a structured product in which one sells a call option but also buys the underlying asset, thereby ``covering'' the call position if it is exercised. Intuitively, selling a covered call bounds the seller's upside in return for premium. The seller is guaranteed to earn premium paid by the buyer but loses money (albeit modestly) if the spot price exceeds the strike price. In other words, the seller's potential gains from the underlying asset appreciating is capped. As such, covered calls are not very risky products. A common strategy is to sell ``out-the-money'' covered calls, meaning the strike price is above the current spot price. Here, the seller is betting that price will not increase past the strike and earn premium whereas the buyer has a directional view that the price will exceed the strike. One can also view a covered call as a hedge against the long position on the underlying.
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\linewidth]{coveredcall.pdf}
+    \caption{The payoff of a covered call. The orange  region represents being ``out-the-money'' whereas the green region represents being ``in-the-money''. The gap between the red and blue lines represents the premium paid to the option seller. Finally, being ``at-the-money'' means the spot price is equal to the strike price, shown as the vertical grey line.}
+    \label{fig:covercall}
+\end{figure}
+
+Finally, a \textit{covered call} is a structured product in which one sells a call option but also buys the underlying asset, thereby ``covering'' the call position if it is exercised (see Figure~\ref{fig:covercall}). Intuitively, selling a covered call bounds the seller's upside in return for premium. The seller is guaranteed to earn premium paid by the buyer but loses upside if the spot price exceeds the strike price. In other words, the seller's potential gains from the underlying asset appreciating is capped. As such, covered calls are not very risky products. A common strategy is to sell ``out-the-money'' covered calls, meaning the strike price is above the current spot price. Here, the seller is betting that price will not increase past the strike and earn premium whereas the buyer has a directional view that the price will exceed the strike. One can also view a covered call as a hedge against the long position on the underlying.
 
 \subsection{Replicating Black-Scholes Covered Calls}
 \label{sec:coveredcall}
@@ -88,17 +100,17 @@ In Section~\ref{sec:rmm}, we showed a technique to derive invariants from payoff
 \[y - K\Phi(\Phi^{-1}(1-x)-\sigma\sqrt{\tau}) = k\]
 where $\Phi$ is a Gaussian CDF and all other variables are as defined in previous sections. The marginal price can be written as $S(x) = Ke^{\Phi^{-1}(1-x)\sigma\sqrt{\tau}}e^{-\frac{1}{2}\sigma^2\tau}$.
 
-To properly replicate covered calls with theta decay, it is important to optimally set the (swap) fee. We leave the details of experiments with fees to the RMM-01 whitepaper. Unlike Uniswap, which is primary meant for traders to swap tokens, the primary users of RMM-01 are LPs who seek to obtain covered call payoffs. The other end of this market is dominated by arbitrageurs who seek to close the price gap between RMM-01 and other markets such as Uniswap. Through arbitrage trades, fees accumulate to LPs, approximating the true covered call premium. That is, there exists a zero-sum duality  between LPs and arbitrageurs. RMMs take advantage of this duality for replication.
+To properly replicate covered calls with theta decay, it is important to optimally set the (swap) fee. We leave the details of fee experimentation to the RMM-01 whitepaper. Unlike Uniswap, which is primarily meant for traders to swap tokens, the primary users of RMM-01 are LPs who seek to obtain covered call payoffs. Traders on RMM-01 are dominated by arbitrageurs closing the price gap between RMM-01 and other markets such as Uniswap. Through arbitrage trades, fees accumulate to RMM-01 LPs, approximating the Black Scholes covered call premium. That is, there exists a zero-sum duality between LPs and arbitrageurs. RMMs take advantage of this duality for replication.
 
 \section{Theta Vaults}
 \label{sec:theta}
 
 We review the design of Theta Vaults, as implemented by Ribbon Finance and similar protocols. A Theta Vault sells out-the-money covered calls every week ad infinitum.
 
-Each week, a new round begins. Participants deposit the underlying asset into a vault. At fixed intervals throughout a round, the assets are aggregated and placed as collateral to sell covered call options. For instance, Ribbon uses Opyn to mint options tokens (also called oTokens). This process is gas efficient as the vault makes a single transaction to Opyn for thousands of users at once. The covered call tokens are sold for premium via a public auction (Ribbon uses Gnossis). Market makers can buy the covered calls, effectively betting that the spot price will exceed the strike. If so, the vault's collaterals are relinquished to the buyers. Otherwise, the collateral is returned to the sellers along with the premium as yield.
+Each week, a new round begins. Participants deposit the underlying asset into a vault. At fixed intervals throughout a round, the assets are aggregated and placed as collateral to sell covered call options. For instance, Ribbon deposits vault collateral into Opyn to mint options tokens (also called oTokens). This process is gas efficient as the vault makes a single transaction to Opyn for thousands of users at once. The call tokens are then sold for premium via a public auction (Ribbon uses Gnosis). Market makers can buy the calls, effectively betting that the spot price will exceed the strike. If so, the vault's collateral (in Opyn) is relinquished to the buyers. Otherwise, the collateral is returned to the sellers along with the premium as yield.
 A manager decides on the weekly strategy to set strike price. The manager may be an automated contract (e.g. set strike to be a percentage above current spot price using an oracle) or a priviledged user who can manually set strike price.
 
-Essentially, the yield accrued by users comes from the time value of an option, in other words Theta decay (hence the name). Users of Theta Vaults do not need to actively manage their positions. Their actions are limited to depositing and withdrawing the underlying. The amount of yield that users earn is strictly bounded by the vault's ability to find buyers within a constrained time interval. In Ribbon, Gnossis auctions are open for only one hour. Unmatched short positions produce no yield since no premium is being paid. Much like orderbooks, a traditional marketplace matching buyers and sellers is difficult to run efficiently on-chain. Next, we propose an alternative design using RMMs.
+Essentially, the yield accrued by users comes from the time value of an option, in other words Theta decay (hence the name). Users of Theta Vaults do not need to actively manage their positions. Their actions are limited to depositing and withdrawing the underlying. The amount of yield that users earn is strictly bounded by the vault's ability to find buyers within a constrained time interval. In Ribbon, Gnosis auctions are open for only one hour. Unmatched short positions produce no yield since no premium is being paid. Much like orderbooks, a traditional marketplace matching buyers and sellers is difficult to run efficiently on-chain. Next, we propose an alternative design using RMMs.
 
 \section{Replicating Theta Vaults}
 
@@ -106,11 +118,24 @@ We propose to offer Theta Vaults through selling covered calls replicated by RMM
 
 \subsection{Mechanism}
 
-The mechanism of a ``Replicating Theta Vault'' (RTV) is largely reminiscent of traditional Theta Vaults, though with some important distinctions.
+The mechanism for ``Replicating Theta Vaults'' (RTV) is similar to traditional Theta Vaults, with some important distinctions.
 
-In each round, users seeking yield will deposit a token pair consisting of a risky asset (e.g. Ethereum) and a stable asset (e.g. USDC) into an RMM-01 pool with a one week expiry and a set strike price in return for an LP token. Throughout the round, arbitrageurs will pay fees to trade tokens in the RMM-01 pool to bridge the price gap with external markets like Uniswap or Coinbase. These fees are directly reinvested into the pool's reserves. At the expiry time, users can burn their LP tokens to retrieve liquidity in the token pair. The payoff experienced by users is the premium from a covered call by replication. At the end of the round, the RMM-01 pool expires, and liquidity is either withdrawn by users or automatically moved to a new RMM-01 pool with a different strike price and an expiry date one week from now. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
+In each round (week), users seeking yield will deposit a token pair consisting of a risky asset (e.g. ETH) and a stable asset (e.g. USDC) into the Pareto Vault. [Twice a week], Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price in return for LP tokens. Throughout the round, arbitrageurs will pay fees to trade tokens in the RMM-01 pool to bridge the price gap with external markets like Uniswap or Coinbase. These fees are directly reinvested into the pool's reserves. The fees earnt in the pool replicates the covered call premium. At the end of the round, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically moved to a new RMM-01 pool with a different strike price and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
 
-No auction nor matching process is required. Technically, there are no buyers of said covered calls as no options are truly being sold, only replicated. The opposing end of an RMM market is arbitrageurs. As long as arbitrageurs are making rational trades for alpha, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not given they do not require a marketplace.
+No auction nor matching process is required. Technically, there are no buyers of the covered calls as no options are being sold, their payoffs only replicated. The LP's counterparties in an RMM market is arbitrageurs. As long as arbitrageurs are making rational trades for alpha, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not.
+
+Beyond this, there are several important design elements:
+\begin{itemize}
+    \item Deposit and withdrawal times: Pareto Vaults will deposit and withdraw from Primitive RMM-01 pools twice a week - each Tuesday and Friday at [5pm UTC]. Any user that wishes to withdraw at that time, must input their request with the Pareto protocol beforehand. Limiting withdrawals to twice weekly improves gas efficiency. As we expand to L2s, we hope to offer more frequent deposit and withdrawal opportunities.
+    \item Vault Tokens: Initially, we will offer only a ETH-USDC vault. Once Pareto launches on mainnet, we will expand our offering to other Top 20 tokens.
+    \item Multi Token Deposits: In the Alpha, users will have to deposit ETH and USDC, this creates friction for users and over time, we plan to remove the need for users to deposit USDC.
+    \item Receipt Tokens: Users will not receive vault tokens by default, however we will reconsider this over time.
+    \item Rebalancing: When a RMM-01 vault expires, all assets will be either the risky asset (e.g. ETH) or the stable asset (e.g. USDC). However, when depositing in a new pool, one needs both risky and stable assets. Our initial approach to handling this is initiating mispriced pools. This is discussed in further detail in \ref{Challenges} [Add more data].
+    \item Expiry Date Selection: Pools will expire each Friday at [5pm UTC].
+    \item Strike Selection: [TBD]
+    \item Implied Volatility Selection: [TBD]
+    \item Pool Fees Selection: [TBD]
+\end{itemize}
 
 \subsection{Fee Structure}
 
@@ -118,20 +143,23 @@ We follow Ribbon's fee model: Pareto's RTV takes a performance fee and a managem
 
 \subsection{Benefits}
 
-Beyond what is already been described on swapping buyers for arbitrageurs, there are a few more benefits of the RTV design. First, fees are paid throughout the round, rather than at a fixed point in time (e.g. an auction). For users, this provides a more flexible system for withdrawing capital. Their assets are never locked as collateral into another protocol, and can be withdrawn from RMM-01 pools at any point. Further, since Theta Vaults flood the options market with large options contracts in a consistent schedule, this has unintended consequences in market dynamics. For one, the sudden increase in supply reduces the value of the option being sold. This is not the case in RTVs specifically because premium (a.k.a. fees) are earned over time. Second, since participating in an RTV is providing liquidity to AMM, it has legally distinct from buying or selling options.
+Beyond swapping buyers for arbitrageurs, there are additional benefits of the RTV design. First, Primitive can be daunting for retail users, it requires them to choose a strike price, expiry date and implied volatility for their deposits. Implied volatility, in particular, is difficult to understand. Pareto aims to abstract away this complexity from users to help the Primitive ecosystem grow. Second, fees are paid throughout the round, rather than at a fixed point in time (e.g. an auction). For Pareto users, this allows us to offer a flexible system for withdrawing capital - twice a week rather than once a week in Traditional Theta Vault protocols. Further, since Theta Vaults flood the options market with many options contracts at the same time each week, this has unintended consequences in market dynamics. For one, the sudden increase in supply reduces the premiums of the options sold. This is not the case in RTVs because premiums (a.k.a. swap fees) are earned over time. Second, since participating in an RTV is providing liquidity to AMM and there is no counterparty, we understand this is legally distinct from buying or selling options.
 
-\subsection{Limitations}
+\subsection{Challenges}
+\label{Challenges}
 
-Benefits aside, RTVs propose new challenges of its own. First, it still requires strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. As such, RTVs would still benefit from a priviledged manager role.
+Benefits aside, RTVs have their own challenges. First, it still requires strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. As such, RTVs would still benefit from a privileged manager role.
 
-Second, there is a challenge of ``rebalancing''. At the end of an RMM-01 pool, assets are almost all either risky or stable token depending on spot price relative to strike. As such, when LPs exchange their LP tokens for assets, it will be returned to them in almost a single asset. This poses a fundamental challenge for Theta Vaults, as providing liquidity for the next round requires a balance of both risky and stable assets. Users would need to swap a portion of one asset for another to participate in the next round. For a sufficiently large vault, an aligned demand for swaps would result in significant slippage. Potential solutions to rebalancing include dynamically routing swaps to find best price (e.g. the 1inch protocol), or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}.
+Second, there is the challenge of ``rebalancing''. When an RMM-01 pool expires, assets are almost all either risky or stable token depending on whether the spot price is above or below the strike. As such, when LPs withdraw assets, they will receive mostly a single asset. This poses a challenge for Theta Vaults, as providing liquidity for the next round requires a balance of both risky and stable assets. Users would need to swap a portion of one asset for another to participate in the next round. For a sufficiently large vault, an aligned demand for swaps would result in significant slippage. Potential solutions to rebalancing include Pareto dynamically routing swaps to find the best price (e.g. the 1inch protocol), or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}.
+
+Third, we are reliant on Oracle data for Strike and Implied Volatility selection. [TBD solution]. Finally, Primitive pools must achieve a minimum scale for accurate replication, we have seen this at very low levels of liquidity (i.e. [xx]) and this should be even lower on Layer 2s when gas costs are lower.
 
 \section{Conclusion and Future Work}
 
 We have provided a technical description for a new design of Theta Vaults built on Replicating Market Makers, aptly named Replicating Theta Vaults. RTVs provide a yield mechanism by which users replicate the premium of selling covered calls by providing liquidity to an token swap pool. The proposed approach has potential capital efficiency benefits at the cost of rebalancing costs.
 An RTV protocol is currently being designed by the Pareto team.
 
-Covered calls are only one structured product that can be replicated by RMM-01. Others include calls, puts, binary options, strangles, condors, etc. Similar vaults can be designed for a larger options ecosystem built on replication.
+Covered calls are only one structured product that can be replicated by RMM-01. Others include calls, puts, binary options, strangles, condors, etc. By building similar vaults for other products, we will create a larger options ecosystem using replication.
 
 \bibliographystyle{unsrt}
 \bibliography{main}
