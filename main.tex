@@ -117,7 +117,7 @@ Essentially, the yield accrued by users comes from the time value of an option, 
 
 We propose to offer Theta Vaults through selling covered calls replicated by RMM-01, as first described in \cite{sterrett2022replicating}. In short, doing so would replace the matching of buyers to sellers with rational arbitrage in an AMM pool -- a potentially more efficient design.
 
-We begin with an overview of the mechanism followed by a thorough description of the implementation and technical details.
+We begin with an overview of the mechanism followed by a thorough description of the implementation and technical details. We recommend reading the following in parallel to the solidity code on Github and technical documentation on Gitbook.
 
 \subsection{Mechanism Overview}
 
@@ -142,7 +142,11 @@ TODO.
 
 \subsection{Rebalancing}
 
-TODO.
+To motivate the need to rebalancing, recall that AMM pools have an internal exchange rate between the risky and stable tokens. As a liquidity provider, you must provide a specific ratio of both risky and stable assets in order to achieve LP tokens in return. Adding more of one asset without adding more of the other does not amount in additional LP tokens. Similarly, RMMs require liquidity providers to deposit at specific ratios. This ratio is usually chosen at the start of the pool to reflect an external market price.
+
+The challenge is that the ratio of risky to stable assets in the vault likely do not match the ``optimal'' ratio expected by the RMM pool. In the extreme, since users only deposit risky token, the vault will own minimal stable assets in the first round. As such, the vault requires ``rebalancing'' (i.e. swapping risky for stable token or vice versa) after each round in order to properly deposit liquidity into the RMM pool next round.
+
+The question arises: Given the swap fees in some market, what is the right amount to swap in order to match the optimal ratio but deposit as much of the value stored in the vault as possible? We show below that this optimization problem can be cheaply solved in closed-form, meaning it is viable to perform on-chain.
 
 \subsection{Vault Management}
 
