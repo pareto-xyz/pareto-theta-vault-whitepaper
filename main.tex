@@ -27,15 +27,16 @@
 
 \begin{abstract}
 Theta Vaults are a simple on-chain automated structured product that sells rolling weekly out-the-money covered calls with premiums returned to vault depositors as yield.
-Traditionally, Theta Vaults face two main challenges: first, the yield is capped by the efficiency of a matching process to find options buyers; second, they often require oracles which can introduce vulnerabilities.
-In this paper, we present a design for Theta Vaults built on top of replicating market makers (RMMs), an extension of automated market makers pioneered by Primitive, that replicates a Black-Scholes covered call payoff.
+Traditionally, Theta Vaults face two main challenges: first, the yield is capped by the efficiency of a matching process to find options buyers; second, they  require oracles for liquidation which can introduce unwanted vulnerabilities.
+In this paper, we present a design for Theta Vaults built on top of replicating market makers (RMMs), an extension of automated market makers that replicates a Black-Scholes covered call payoff.
+We show this ``Replicating Theta Vault'', or RTV design precisely addresses the stated challenges.
 Beyond covered calls, an ecosystem of efficient and secure options vaults can be built by a similar replication technique.
 % I'm not sure that Ribbon requires an Oracle, it depends if Opyn's oTokens do, I need to check this.
 \end{abstract}
 
 \section{Preface}
 
-This paper is a technical introduction to Pareto Replicating Theta Vaults, a redesign of the yield instrument popularized by Ribbon Finance. In the following, we describe how to construct Theta Vaults on top of replicating market makers (RMMs), in which selling a covered call is equivalent to being a liquidity provider. Our primary hypothesis is that the ability of RMMs to replicate a wide array of structured products can be used to design an options ecosystem with token composability as a first-class citizen. For Theta Vaults, RMMs offer a permission-less and auction-free solution that users may find attractive. In the following sections, we first provide background information then present the mechanism underlying the Replicating Theta Vault (RTV).
+This paper is a technical introduction to Pareto Replicating Theta Vaults, a redesign of the yield instrument popularized by Ribbon Finance, ThetaNuts, Friktion, among many others. We describe how to construct Theta Vaults on top of replicating market makers (RMMs), in which selling a covered call is equivalent to being a liquidity provider for AMM. Our primary hypothesis is that the ability of RMMs to replicate a wide array of structured products can be used to design an options ecosystem with token composability as a first-class citizen. For Theta Vaults, RMMs offer a permission-less and auction-free solution that users may find attractive. In the following sections, we provide background information then present the mechanism underlying the Replicating Theta Vault (RTV).
 
 \paragraph{[6/15/22]} The alpha product for Pareto RTVs is currently under development. Please reach out to \texttt{team@paretolabs.xyz} if you have any questions.
 
@@ -110,32 +111,42 @@ We review the design of Theta Vaults, as implemented by Ribbon Finance and simil
 Each week, a new round begins. Participants deposit the underlying asset into a vault. At fixed intervals throughout a round, the assets are aggregated and placed as collateral to sell covered call options. For instance, Ribbon deposits vault collateral into Opyn to mint options tokens (also called oTokens). This process is gas efficient as the vault makes a single transaction to Opyn for thousands of users at once. The call tokens are then sold for premium via a public auction (Ribbon uses Gnosis). Market makers can buy the calls, effectively betting that the spot price will exceed the strike. If so, the vault's collateral (in Opyn) is relinquished to the buyers. Otherwise, the collateral is returned to the sellers along with the premium as yield.
 A manager decides on the weekly strategy to set strike price. The manager may be an automated contract (e.g. set strike to be a percentage above current spot price using an oracle) or a priviledged user who can manually set strike price.
 
-Essentially, the yield accrued by users comes from the time value of an option, in other words Theta decay (hence the name). Users of Theta Vaults do not need to actively manage their positions. Their actions are limited to depositing and withdrawing the underlying. The amount of yield that users earn is strictly bounded by the vault's ability to find buyers within a constrained time interval. In Ribbon, Gnosis auctions are open for only one hour. Unmatched short positions produce no yield since no premium is being paid. Much like orderbooks, a traditional marketplace matching buyers and sellers is difficult to run efficiently on-chain. Next, we propose an alternative design using RMMs.
+Essentially, the yield accrued by users comes from the time value of an option, in other words Theta decay (hence the name). Users of Theta Vaults do not need to actively manage their positions. Their actions are limited to depositing and withdrawing the underlying. The amount of yield that users earn is strictly bounded by the vault's ability to find buyers within a constrained time interval. In Ribbon, Gnosis auctions are open for only one hour. Unmatched short positions produce no yield since no premium is being paid. Much like orderbooks, a traditional marketplace matching buyers and sellers is difficult to run efficiently on-chain. Next, we propose an alternative design through replication.
 
 \section{Replicating Theta Vaults}
 
 We propose to offer Theta Vaults through selling covered calls replicated by RMM-01, as first described in \cite{sterrett2022replicating}. In short, doing so would replace the matching of buyers to sellers with rational arbitrage in an AMM pool -- a potentially more efficient design.
 
-\subsection{Mechanism}
+We begin with an overview of the mechanism followed by a thorough description of the implementation and technical details.
 
-The mechanism for ``Replicating Theta Vaults'' (RTV) is similar to traditional Theta Vaults, with some important distinctions.
+\subsection{Mechanism Overview}
 
-In each round (week), users seeking yield will deposit a token pair consisting of a risky asset (e.g. ETH) and a stable asset (e.g. USDC) into the Pareto Vault. [Twice a week], Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price in return for LP tokens. Throughout the round, arbitrageurs will pay fees to trade tokens in the RMM-01 pool to bridge the price gap with external markets like Uniswap or Coinbase. These fees are directly reinvested into the pool's reserves. The fees earnt in the pool replicates the covered call premium. At the end of the round, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically moved to a new RMM-01 pool with a different strike price and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
+The mechanism for ``Replicating Theta Vaults'' (RTV) is similar to traditional Theta Vaults with a few important distinctions.
 
-No auction nor matching process is required. Technically, there are no buyers of the covered calls as no options are being sold, their payoffs only replicated. The LP's counterparties in an RMM market is arbitrageurs. As long as arbitrageurs are making rational trades for alpha, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not.
+In each week, users seeking yield will deposit risky assets (e.g. ETH tokens) into the Pareto Vault.
+Once a week, Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price, implied volatility, and gamma chosen to maximize yield. In return, the pool rewards the vault with LP tokens.
+Throughout the week, arbitrageurs will pay fees to swap tokens in the pool to bridge the price gap with external markets like Uniswap.
+These fees are directly reinvested into the pool's reserves.
+The fees earnt in the pool replicate the covered call premium \cite{angeris2021replicating}, providing users with the payoff of having taken long positions.
+At the end of the week, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically rolled over to a new RMM-01 pool with an updated strike price, volatility, gamma, and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
 
-Beyond this, there are several important design elements:
-\begin{itemize}
-    \item Deposit and withdrawal times: Pareto Vaults will deposit and withdraw from Primitive RMM-01 pools twice a week - each Tuesday and Friday at [5pm UTC]. Any user that wishes to withdraw at that time, must input their request with the Pareto protocol beforehand. Limiting withdrawals to twice weekly improves gas efficiency. As we expand to L2s, we hope to offer more frequent deposit and withdrawal opportunities.
-    \item Vault Tokens: Initially, we will offer only a ETH-USDC vault. Once Pareto launches on mainnet, we will expand our offering to other Top 20 tokens.
-    \item Multi Token Deposits: In the Alpha, users will have to deposit ETH and USDC, this creates friction for users and over time, we plan to remove the need for users to deposit USDC.
-    \item Receipt Tokens: Users will not receive vault tokens by default, however we will reconsider this over time.
-    \item Rebalancing: When a RMM-01 vault expires, all assets will be either the risky asset (e.g. ETH) or the stable asset (e.g. USDC). However, when depositing in a new pool, one needs both risky and stable assets. Our initial approach to handling this is initiating mispriced pools. This is discussed in further detail in \ref{Challenges} [Add more data].
-    \item Expiry Date Selection: Pools will expire each Friday at [5pm UTC].
-    \item Strike Selection: [TBD]
-    \item Implied Volatility Selection: [TBD]
-    \item Pool Fees Selection: [TBD]
-\end{itemize}
+No auction nor matching process is required. Technically, there are no buyers of the covered calls as no options are being sold, their payoffs only replicated. The LP's counterparties in an RMM is arbitrageurs. As long as arbitrageurs are making rational trades for alpha to close price deviations, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not.
+
+\subsection{User Flow}
+
+TODO.
+
+\subsection{Vault Operations}
+
+TODO.
+
+\subsection{Rebalancing}
+
+TODO.
+
+\subsection{Vault Management}
+
+TODO.
 
 \subsection{Fee Structure}
 
@@ -159,9 +170,26 @@ Third, we are reliant on Oracle data for Strike and Implied Volatility selection
 We have provided a technical description for a new design of Theta Vaults built on Replicating Market Makers, aptly named Replicating Theta Vaults. RTVs provide a yield mechanism by which users replicate the premium of selling covered calls by providing liquidity to an token swap pool. The proposed approach has potential capital efficiency benefits at the cost of rebalancing costs.
 An RTV protocol is currently being designed by the Pareto team.
 
-Covered calls are only one structured product that can be replicated by RMM-01. Others include calls, puts, binary options, strangles, condors, etc. By building similar vaults for other products, we will create a larger options ecosystem using replication.
+\subsection{Roadmap}
+
+There are two interesting directions to build on. First, covered calls are only one structured product that can be replicated by RMM-01. Others include calls, puts, binary options, strangles, condors, etc \cite{sterrett2022replicating}. By building similar vaults for other products, we will create a larger options ecosystem using replication. Second, as with most DeFi protocols, the first release of Pareto RTVs will focus on ETH and USDC. Afterwards, Pareto RTVs will look to expand to L2 chains given cheaper gas fees as well as other token pairs in top 20.
 
 \bibliographystyle{unsrt}
 \bibliography{main}
 
 \end{document}
+
+% EXTRA
+
+% Beyond this, there are several important design elements:
+% \begin{itemize}
+%     \item Deposit and withdrawal times: Pareto Vaults will deposit and withdraw from Primitive RMM-01 pools twice a week - each Tuesday and Friday at [5pm UTC]. Any user that wishes to withdraw at that time, must input their request with the Pareto protocol beforehand. Limiting withdrawals to twice weekly improves gas efficiency. As we expand to L2s, we hope to offer more frequent deposit and withdrawal opportunities.
+%     \item Vault Tokens: Initially, we will offer only a ETH-USDC vault. Once Pareto launches on mainnet, we will expand our offering to other Top 20 tokens.
+%     \item Multi Token Deposits: In the Alpha, users will have to deposit ETH and USDC, this creates friction for users and over time, we plan to remove the need for users to deposit USDC.
+%     \item Receipt Tokens: Users will not receive vault tokens by default, however we will reconsider this over time.
+%     \item Rebalancing: When a RMM-01 vault expires, all assets will be either the risky asset (e.g. ETH) or the stable asset (e.g. USDC). However, when depositing in a new pool, one needs both risky and stable assets. Our initial approach to handling this is initiating mispriced pools. This is discussed in further detail in \ref{Challenges} [Add more data].
+%     \item Expiry Date Selection: Pools will expire each Friday at [5pm UTC].
+%     \item Strike Selection: [TBD]
+%     \item Implied Volatility Selection: [TBD]
+%     \item Pool Fees Selection: [TBD]
+% \end{itemize}
