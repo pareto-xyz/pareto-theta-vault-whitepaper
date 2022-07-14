@@ -5,6 +5,8 @@
 \usepackage{fullpage}
 \usepackage[utf8]{inputenc}
 \usepackage{appendix}
+\usepackage{amssymb}
+\usepackage{amsmath}
 \usepackage{hyperref}
 \usepackage{float}
 \usepackage{graphicx}
@@ -73,14 +75,15 @@ RMMs \cite{angeris2021replicating} show that for all payoff functions $V$ that a
 The method goes further to show that the payoff function and the invariant are Fenchel conjugates of one another, a surprising result. So, to enable LPs to achieve a payoff $V$, one can design a CFMM with the invariant $\psi_V$. We say that $\psi_V$ ``replicates'' the payoff $V$. In Section~\ref{sec:coveredcall}, we will focus on an RMM that replicates the payoff of a covered call option.
 
 \subsection{Options Review}
+\label{sec:options}
 
 Before then, we review the basics of a covered call. An option is a derivative instrument with the right to buy or sell an underlying asset at a pre-determined price (its strike price). The buyer of an option pays a premium to the seller in exchange for that right.
 
 A \textit{call} option is an option with the right to buy an asset at a pre-determined ``strike price'' such that if the underlying asset price (also called the spot price) is above the strike, then the buyer may ``exercise'' the option, meaning purchase the underlying asset at the strike price. Critically, this is less than the spot price meaning the buyer immediately makes profit. It is not required for the seller to own the underlying asset upfront when selling a call. Only if the option is exercised must the seller purchase and transfer the underlying asset to the buyer. Additionally, options have expiry times after which the contract between the buyer and seller no longer holds. We focus on European options in which the buyer can only exercise at the expiry time, not before (as with the American option).
 
 Pricing an option means setting the value of the premium to the expected value of the profits from the option being exercised. In generality, this is difficult to  reason about. The best practice is to assume the  Black-Scholes model which makes simplifications to asset returns, volatility, and market dynamics among many others. Despite not being faithful to real world markets, the model is still useful to determine rational prices of options. The Black-Scholes formula defines the price of a call option as
-\[\textup{premium} = p N(d_1) - K e^{-rt} N(d_2)\]
-where $d_1 = \left( \frac{\log(p/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}\right)$ and $d_2 = d_1 - \sigma\sqrt{\tau}$. Notation-wise, $p$ is the spot price, $K$  the strike price, $\tau = T-t$ where $T$ is the expiry time and $t$ the current time, $r$ the risk-free rate (assumed as constant), and $\sigma$ the implied volatility (assumed as constant).
+\[\textup{premium} = p \Phi(d_1) - K e^{-rt} \Phi(d_2)\]
+where $d_1 = \left( \frac{\log(p/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}\right)$ and $d_2 = d_1 - \sigma\sqrt{\tau}$. Notation-wise, $p$ is the spot price, $K$ the strike price, $\tau = T-t$ where $T$ is the expiry time and $t$ the current time, $r$ the risk-free rate (assumed as constant), $\sigma$ the implied volatility (assumed as constant), $\Phi$ is the cumulative distribution function for a standard normal distribution and $\Phi^{-1}$ its inverse..
 
 A property of options is that its value decreases as time approaches the expiry time, also called ``Theta decay''. Intuitively, an option with more time has more potential for favorable price fluctuation, which is valuable to the buyer (e.g. it could be that tomorrow the price of a call option exceeds the strike at which point the buyer can exercise). This benefit is priced into the Black-Scholes model, and hence priced into the premium paid by the buyer.
 % That expiry time ($\tau = 0$), the theta value is zero.
@@ -98,8 +101,11 @@ Finally, a \textit{covered call} is a structured product in which one sells a ca
 \label{sec:coveredcall}
 
 In Section~\ref{sec:rmm}, we showed a technique to derive invariants from payoff functions assuming three constraints on the payoff function. We now observe that the payoff of a covered call is indeed non-negative, concave, and 1-homogenous. In other words, there exists an invariant that replicates the covered call premium. The Primitive RMM-01\footnote{Built by the Primitive team. See \url{https://primitive.xyz/whitepaper-rmm-01.pdf}.} invariant is
-\[y - K\Phi(\Phi^{-1}(1-x)-\sigma\sqrt{\tau}) = k\]
-where $\Phi$ is a Gaussian CDF and all other variables are as defined in previous sections. The marginal price can be written as $S(x) = Ke^{\Phi^{-1}(1-x)\sigma\sqrt{\tau}}e^{-\frac{1}{2}\sigma^2\tau}$.
+\begin{equation}
+    y - K\Phi(\Phi^{-1}(1-x)-\sigma\sqrt{\tau}) = k
+\label{eq:invariant}
+\end{equation}
+where all other variables are as defined in previous sections. The marginal price can be written as $S(x) = Ke^{\Phi^{-1}(1-x)\sigma\sqrt{\tau}}e^{-\frac{1}{2}\sigma^2\tau}$.
 
 To properly replicate covered calls with theta decay, it is important to optimally set the (swap) fee. We leave the details of fee experimentation to the RMM-01 whitepaper. Unlike Uniswap, which is primarily meant for traders to swap tokens, the primary users of RMM-01 are LPs who seek to obtain covered call payoffs. Traders on RMM-01 are dominated by arbitrageurs closing the price gap between RMM-01 and other markets such as Uniswap. Through arbitrage trades, fees accumulate to RMM-01 LPs, approximating the Black Scholes covered call premium. That is, there exists a zero-sum duality between LPs and arbitrageurs. RMMs take advantage of this duality for replication.
 
@@ -142,11 +148,47 @@ TODO.
 
 \subsection{Rebalancing}
 
-To motivate the need to rebalancing, recall that AMM pools have an internal exchange rate between the risky and stable tokens. As a liquidity provider, you must provide a specific ratio of both risky and stable assets in order to achieve LP tokens in return. Adding more of one asset without adding more of the other does not amount in additional LP tokens. Similarly, RMMs require liquidity providers to deposit at specific ratios. This ratio is usually chosen at the start of the pool to reflect an external market price.
+To motivate the need to rebalancing, recall that AMM pools have an internal exchange rate between the risky and stable tokens. As a liquidity provider, you must provide a specific ratio of both risky and stable assets in order to achieve LP tokens in return. Adding more of one asset without adding more of the other does not amount in additional LP tokens. In a similar vein, RMMs require liquidity providers to deposit at specific ratios. This ratio is usually chosen at the start of the pool to reflect an external market price.
 
-The challenge is that the ratio of risky to stable assets in the vault likely do not match the ``optimal'' ratio expected by the RMM pool. In the extreme, since users only deposit risky token, the vault will own minimal stable assets in the first round. As such, the vault requires ``rebalancing'' (i.e. swapping risky for stable token or vice versa) after each round in order to properly deposit liquidity into the RMM pool next round.
+The challenge is that the ratio of risky to stable assets in the vault likely do not match the ``optimal'' ratio expected by the RMM pool.
+This is due to two reasons.
+First, users only deposit risky token, meaning the vault will likely own much more risky than stable asset.
+Second, when an RMM-01 pool expires, assets are almost either in all risky or all stable token depending on whether the spot price is above or below the strike.
+So, the vault requires ``rebalancing'' -- swapping risky for stable token or vice versa -- after each round in order to properly deposit liquidity into the RMM pool next round.
 
 The question arises: Given the swap fees in some market, what is the right amount to swap in order to match the optimal ratio but deposit as much of the value stored in the vault as possible? We show below that this optimization problem can be cheaply solved in closed-form, meaning it is viable to perform on-chain.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\linewidth]{rebalance.pdf}
+    \caption{Illustration of the solution to the rebalancing optimization problem.}
+    \label{fig:rebalance}
+\end{figure}
+
+Begin by introducing some notation. Let $p$ be the reference price of a risky token X in terms of a stable token Y. For instance, $p$ may be the exchange rate of a Uniswap-v3 or Primitive RMM-01 pool. Next, set $r_1 = 1 - \Phi(d_1)$ with $d_1$ as defined in Section~\ref{sec:options} and $\Phi$ the CDF for a standard normal. For context, $r_1$ represents the amount of risky token per liquidity token (in Primitive, this is often called referred to as \texttt{riskyPerLp}). Also, set $s_1 = K\Phi(\Phi^{-1}(1-r_1)-\sigma\sqrt{\tau}) + k$ to be the amount of stable token per liquidity token, derived using the invariant in Equation~\ref{eq:invariant}. Finally, let $(x_0, y_0)$ be the known, unbalanced  amounts of risky and stable tokens. Let $(x^*, y^*)$ be the unknown but desired balanced amounts.
+
+We can write the rebalancing problem as the linear optimization problem:
+\begin{equation}
+    \begin{aligned}
+        \max_{x^*, y^*}  \quad & p x^* + y^* \\
+        \textrm{s.t.} \quad & s_1 x^* = r_1 y^* \\
+        &  p x^* + y^* \leq p x_0 + y_0 \\
+        & x^*, y^* \geq 0
+    \end{aligned}
+    \label{eq:rebalance}
+\end{equation}
+where the objective is to maximize the value (in stable token Y) captured by the optimal portfolio. The constraints, in order: (1) restrict this optimal portfolio to respect the liquidity exchange rates of the RMM-01 pool; (2) bound the optimal portfolio by the value held in the unbalanced portfolio; (3) non-negative token amounts.
+
+\textbf{Intuition}$\quad$ Equation~\ref{eq:rebalance} is solvable off-chain using any linear optimizer but we wish to do this this cheaply on-chain, meaning we cannot use iterative algorithms. The closed-form solution is best explained through visualization. Figure~\ref{fig:rebalance} illustrates the three constraints using the shaded yellow and red regions as well as the blue line. We observe that the set of feasible solutions is the intersection of the three constraints: in other words, the portion of the blue line within the red shaded area. Since the objective $p x^* + y^*$ is monotonic in both inputs, the optimal solution will be the intersection of the two lines, shown as the star.
+
+\textbf{Solution}$\quad$ Finding the intersection between any two lines can be done in closed-form. For the rebalancing problem, we have two lines: (1) $y^* = \left(\frac{s_1}{r_1}\right)x^*$ and (2) $y^* = p(x_0 - x^*) + y_0$. Hence, the intersection is the point:
+\begin{align}
+    x^* &= r_1 V_0 / M \label{eq:rebalance:solution} \\
+    y^* &= s_1 V_0 / M \nonumber
+\end{align}
+where $V_0 = px_0 + y_0$ and $M = r_1 p + s_1$.
+
+Given the optimal portfolio $(x^*, y^*)$ using Equation~\ref{eq:rebalance:solution} and the starting portfolio $(x_0, y_0)$, it must be that either $x^* \geq x_0, y^* \leq y_0$ or $x^* \leq x_0, y^* \geq y_0$. In the first case, we can swap $x^* - x_0$ of token X on the reference market with price $p$. In the second case, we can swap $y^* - y_0$ of token Y. Finally, we can deposit $x^*, y^*$ into the RMM-01 pool at no loss.
 
 \subsection{Vault Management}
 
@@ -154,7 +196,9 @@ TODO.
 
 \subsection{Fee Structure}
 
-We follow Ribbon's fee model: Pareto's RTV takes a performance fee and a management fee if and only if the vault accrued yield that round. If spot price exceeds strike price (i.e in-the-money), no fees are taken. The performance fee is a percentage of the yield whereas the management fee is a percentage of the assets in the vault. These percentages are set at contract deployment and can be changed only by the contract owner.
+Pareto RTVs take a performance fee and a management fee if and only if the vault accrued yield that round.
+That is, if the value of the vault's assets after expiry is less than the value of those assets at-deposit, then no fees are taken since the user would have been better off holding onto their tokens.
+The performance fee is a percentage of the yield whereas the management fee is a percentage of the total assets in the vault. These percentages are set at contract deployment and can be changed only by the contract owner.
 
 \subsection{Benefits}
 
@@ -165,7 +209,9 @@ Beyond swapping buyers for arbitrageurs, there are additional benefits of the RT
 
 Benefits aside, RTVs have their own challenges. First, it still requires strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. As such, RTVs would still benefit from a privileged manager role.
 
-Second, there is the challenge of ``rebalancing''. When an RMM-01 pool expires, assets are almost all either risky or stable token depending on whether the spot price is above or below the strike. As such, when LPs withdraw assets, they will receive mostly a single asset. This poses a challenge for Theta Vaults, as providing liquidity for the next round requires a balance of both risky and stable assets. Users would need to swap a portion of one asset for another to participate in the next round. For a sufficiently large vault, an aligned demand for swaps would result in significant slippage. Potential solutions to rebalancing include Pareto dynamically routing swaps to find the best price (e.g. the 1inch protocol), or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}.
+Second, TODO.
+
+% Second, there is the challenge of ``rebalancing''. As such, when LPs withdraw assets, they will receive mostly a single asset. This poses a challenge for Theta Vaults, as providing liquidity for the next round requires a balance of both risky and stable assets. Users would need to swap a portion of one asset for another to participate in the next round. For a sufficiently large vault, an aligned demand for swaps would result in significant slippage. Potential solutions to rebalancing include Pareto dynamically routing swaps to find the best price (e.g. the 1inch protocol), or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}.
 
 Third, we are reliant on Oracle data for Strike and Implied Volatility selection. [TBD solution]. Finally, Primitive pools must achieve a minimum scale for accurate replication, we have seen this at very low levels of liquidity (i.e. [xx]) and this should be even lower on Layer 2s when gas costs are lower.
 
