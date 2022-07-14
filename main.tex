@@ -142,21 +142,29 @@ No auction nor matching process is required. Technically, there are no buyers of
 
 Users can take three primary actions (which are done through a frontend or an API): deposit liquidity, request a withdrawal, and complete a withdrawal.
 
-\textbf{Deposit Liquidity}$\quad$ Users can make deposits of any size in risky token only. The vault will handle swaps for stable tokens internally. Upon depositing, the users tokens will remain in a ``pending'' status until the next round. That is, the user's liquidity will \textit{not} be placed in the current vault immediately. Once the next vault is deployed, the users pending tokens will then be locked into the underlying RMM-01 pool.
+\textbf{Deposit Liquidity}$\quad$ Users can make deposits of any size in risky token only.
+The vault will handle swaps for stable tokens internally.
+Upon depositing, the users tokens will remain in a ``pending'' status until the next round.
+That is, the user's liquidity will \textit{not} be placed in the current vault immediately.
+Once the next vault is deployed, the users pending tokens will then be locked into the underlying RMM-01 pool.
+
+After receiving a deposit, the vault mints share tokens for the user. Pareto internally tracks share ownership and opts not to transfer them out of the contract.
 
 \textbf{Request a Withdrawal}$\quad$ Users cannot withdraw tokens instantaneously from the vault. They must wait until the current round completes. However, users can make a request to withdraw liquidity at any point. A request must be made prior to withdrawal completion. Users must specify how many shares they wish to withdraw (default is to withdraw all).
 
-\textbf{Complete a Withdrawal}$\quad$ At any point after the round at which a withdrawal request is made is over, the user can complete a withdrawal. This will immediately transfer \textit{both} risky and stable tokens to the user's address. Note that Pareto RTV's do not automatically convert user assets all back to risky token. This action is left to the user.
+\textbf{Complete a Withdrawal}$\quad$ At any point after the round at which a withdrawal request is made is over, the user can complete a withdrawal. This will immediately transfer \textit{both} risky and stable tokens to the user's address, and burn the appropriate amount of share tokens held by the vault. Note that Pareto RTV's do not automatically convert user assets all back to risky token. Users will need to do this themselves.
 
-There are three special users: an owner, a keeper, a fee recipient. The owner is responsible for deploying the contract, and has control over setting the keeper, fee recipient, and other key vault parameters. The keeper is responsible for managing the vault each round (see Section~\ref{sec:management}). The fee recipient receives fees from the vault for its operation (see Section~\ref{sec:fees}).
+There are three special users: an owner, a keeper, a fee recipient. The owner is responsible for deploying the contract, and has control over setting the keeper, fee recipient, and other key vault parameters. The keeper is responsible for managing the vault each round (see Section~\ref{sec:management}). The fee recipient receives fees for vault operation (see Section~\ref{sec:fees}).
 
 \subsection{Vault Operations}
 
-The vault undergoes two primary actions (both of which occur prior to every round): deployment and rollover.
+The vault undergoes three primary actions (both of which occur prior to every round): deployment, fee payment, and rollover.
 
-\textbf{Deployment}$\quad$ TODO.
+\textbf{Deployment}$\quad$ At the end of a round, the vault prepares for the next round by deploying a new RMM-01 pool with a new strike price, implied volatility, and gamma set by the keeper based on current market prices (see Section~\ref{sec:management}). Afterwards, liquidity is extracted from the current RMM-01 pool and transferred to the vault's ownership.
 
-\textbf{Rollover}$\quad$ TODO.
+\textbf{Fee Payment}$\quad$ Immediately following deployment, analysis is done to check if the vault made a profit. If so, a performance fee and a management are transferred from the vault to the chosen fee recipient. If the vault took a loss, no fees are taken.
+
+\textbf{Rollover}$\quad$ The risky and stable assets owned by the vault are rebalanced through swaps using the Uniswap-v3 router (see Section~\ref{sec:rebalance}), then placed in the newly deployed RMM-01 pool in exchange for LP tokens. A new round begins.
 
 \subsection{Rebalancing}
 \label{sec:rebalance}
