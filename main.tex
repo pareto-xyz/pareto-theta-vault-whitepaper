@@ -140,13 +140,14 @@ No auction nor matching process is required. Technically, there are no buyers of
 
 \subsection{User Flow}
 
-TODO.
+Users can
 
 \subsection{Vault Operations}
 
 TODO.
 
 \subsection{Rebalancing}
+\label{sec:rebalance}
 
 To motivate the need to rebalancing, recall that AMM pools have an internal exchange rate between the risky and stable tokens. As a liquidity provider, you must provide a specific ratio of both risky and stable assets in order to achieve LP tokens in return. Adding more of one asset without adding more of the other does not amount in additional LP tokens. In a similar vein, RMMs require liquidity providers to deposit at specific ratios. This ratio is usually chosen at the start of the pool to reflect an external market price.
 
@@ -202,18 +203,16 @@ The performance fee is a percentage of the yield whereas the management fee is a
 
 \subsection{Benefits}
 
-Beyond swapping buyers for arbitrageurs, there are additional benefits of the RTV design. First, Primitive can be daunting for retail users, it requires them to choose a strike price, expiry date and implied volatility for their deposits. Implied volatility, in particular, is difficult to understand. Pareto aims to abstract away this complexity from users to help the Primitive ecosystem grow. Second, fees are paid throughout the round, rather than at a fixed point in time (e.g. an auction). For Pareto users, this allows us to offer a flexible system for withdrawing capital - twice a week rather than once a week in Traditional Theta Vault protocols. Further, since Theta Vaults flood the options market with many options contracts at the same time each week, this has unintended consequences in market dynamics. For one, the sudden increase in supply reduces the premiums of the options sold. This is not the case in RTVs because premiums (a.k.a. swap fees) are earned over time. Second, since participating in an RTV is providing liquidity to AMM and there is no counterparty, we understand this is legally distinct from buying or selling options.
+Beyond swapping buyers for arbitrageurs, there are additional benefits of the RTV design. First, Primitive can be daunting for retail users: it requires them to choose a strike price, expiry date, and implied volatility for their deposits. Implied volatility, in particular, is difficult to understand. Pareto aims to abstract away this complexity from users to help the Primitive ecosystem grow. Second, fees are paid throughout the round, rather than at a fixed point in time (e.g. an auction). For Pareto users, this allows us to offer a flexible system for withdrawing capital - twice a week rather than once a week in Traditional Theta Vault protocols. Further, since Theta Vaults flood the options market with many options contracts at the same time each week, this has unintended consequences in market dynamics. For one, the sudden increase in supply reduces the premiums of the options sold. This is not the case in RTVs because premiums (a.k.a. swap fees) are earned over time. Second, since participating in an RTV is providing liquidity to AMM and there is no counterparty, we understand this is legally distinct from buying or selling options.
 
 \subsection{Challenges}
 \label{Challenges}
 
-Benefits aside, RTVs have their own challenges. First, it still requires strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. As such, RTVs would still benefit from a privileged manager role.
+Benefits aside, RTVs have their own challenges. First, like regular Theta Vaults, RTVs still require strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. Although RTVs no longer use oracles to determine liquidation, they still rely on oracles in vault creation and fee computation.
 
-Second, TODO.
+Second, the solution to rebalancing in Section~\ref{sec:rebalance} would face significant slippage as the liquidity locked within the vault grows large. Potential solutions include dynamically routing swaps to find the best price in a manner similar to the 1inch protocol, or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}. More research will be conducted to better understand these solutions and their drawbacks.
 
-% Second, there is the challenge of ``rebalancing''. As such, when LPs withdraw assets, they will receive mostly a single asset. This poses a challenge for Theta Vaults, as providing liquidity for the next round requires a balance of both risky and stable assets. Users would need to swap a portion of one asset for another to participate in the next round. For a sufficiently large vault, an aligned demand for swaps would result in significant slippage. Potential solutions to rebalancing include Pareto dynamically routing swaps to find the best price (e.g. the 1inch protocol), or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}.
-
-Third, we are reliant on Oracle data for Strike and Implied Volatility selection. [TBD solution]. Finally, Primitive pools must achieve a minimum scale for accurate replication, we have seen this at very low levels of liquidity (i.e. [xx]) and this should be even lower on Layer 2s when gas costs are lower.
+Finally, Primitive pools must achieve a minimum scale for accurate replication. We have seen that accurate replication can be achieved at very low levels of liquidity from the Primitive whitepaper using carefully chosen transaction fees, and this should be even lower on Layer 2's where gas costs are significantly lower. Pareto RTVs would benefit from simulations on- and off-chain to estimate the minimum scale for proper replication.
 
 \section{Conclusion and Future Work}
 
