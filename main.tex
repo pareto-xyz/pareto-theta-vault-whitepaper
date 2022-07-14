@@ -140,11 +140,23 @@ No auction nor matching process is required. Technically, there are no buyers of
 
 \subsection{User Flow}
 
-Users can
+Users can take three primary actions (which are done through a frontend or an API): deposit liquidity, request a withdrawal, and complete a withdrawal.
+
+\textbf{Deposit Liquidity}$\quad$ Users can make deposits of any size in risky token only. The vault will handle swaps for stable tokens internally. Upon depositing, the users tokens will remain in a ``pending'' status until the next round. That is, the user's liquidity will \textit{not} be placed in the current vault immediately. Once the next vault is deployed, the users pending tokens will then be locked into the underlying RMM-01 pool.
+
+\textbf{Request a Withdrawal}$\quad$ Users cannot withdraw tokens instantaneously from the vault. They must wait until the current round completes. However, users can make a request to withdraw liquidity at any point. A request must be made prior to withdrawal completion. Users must specify how many shares they wish to withdraw (default is to withdraw all).
+
+\textbf{Complete a Withdrawal}$\quad$ At any point after the round at which a withdrawal request is made is over, the user can complete a withdrawal. This will immediately transfer \textit{both} risky and stable tokens to the user's address. Note that Pareto RTV's do not automatically convert user assets all back to risky token. This action is left to the user.
+
+There are three special users: an owner, a keeper, a fee recipient. The owner is responsible for deploying the contract, and has control over setting the keeper, fee recipient, and other key vault parameters. The keeper is responsible for managing the vault each round (see Section~\ref{sec:management}). The fee recipient receives fees from the vault for its operation (see Section~\ref{sec:fees}).
 
 \subsection{Vault Operations}
 
-TODO.
+The vault undergoes two primary actions (both of which occur prior to every round): deployment and rollover.
+
+\textbf{Deployment}$\quad$ TODO.
+
+\textbf{Rollover}$\quad$ TODO.
 
 \subsection{Rebalancing}
 \label{sec:rebalance}
@@ -192,14 +204,28 @@ where $V_0 = px_0 + y_0$ and $M = r_1 p + s_1$.
 Given the optimal portfolio $(x^*, y^*)$ using Equation~\ref{eq:rebalance:solution} and the starting portfolio $(x_0, y_0)$, it must be that either $x^* \geq x_0, y^* \leq y_0$ or $x^* \leq x_0, y^* \geq y_0$. In the first case, we can swap $x^* - x_0$ of token X on the reference market with price $p$. In the second case, we can swap $y^* - y_0$ of token Y. Finally, we can deposit $x^*, y^*$ into the RMM-01 pool at no loss.
 
 \subsection{Vault Management}
+\label{sec:management}
 
-TODO.
+Pareto RTVs designate a special address ``keeper'' whose role is to manage the vault. Keepers are responsible for deploying new vaults each round and rolling over liquidity from the last vault. Practically, these actions will be automated as two smart contract calls.
+
+The keeper is also responsible for choosing algorithms to decide the strike, implied volatility, and RMM-01 transaction fee: three important parameters that affect the yield users receive. We describe each of these below.
+
+\textbf{Strike Selection}$\quad$ TODO.
+
+\textbf{Volatility Selection}$\quad$ TODO.
+
+\textbf{Gamma Selection}$\quad$ TODO.
+
+\textbf{Manual Override}$\quad$ Although selection is largely automated, the keeper reserves the right to manually override algorithmic choices to ensure vault success. At any point in the current round, the keeper may change the strike, implied volatility, or gamma for the \textit{next} round.
+
 
 \subsection{Fee Structure}
+\label{sec:fees}
 
 Pareto RTVs take a performance fee and a management fee if and only if the vault accrued yield that round.
 That is, if the value of the vault's assets after expiry is less than the value of those assets at-deposit, then no fees are taken since the user would have been better off holding onto their tokens.
-The performance fee is a percentage of the yield whereas the management fee is a percentage of the total assets in the vault. These percentages are set at contract deployment and can be changed only by the contract owner.
+The ``value'' is computed in a single token (either risky or stable) and requires an oracle for the exchange rate.
+The performance fee is a percentage of the yield whereas the management fee is a percentage of the total assets in the vault. These percentages are set at deployment and can be changed only by the contract owner.
 
 \subsection{Benefits}
 
@@ -226,7 +252,14 @@ There are two interesting directions to build on. First, covered calls are only 
 \bibliographystyle{unsrt}
 \bibliography{main}
 
+\appendix
+
+\section{Solidity Notes}
+
+We direct the reader to the code \url{https://github.com/pareto-xyz/pareto-theta-vault-v1} and the technical documentation \url{https://pareto-labs.gitbook.io/technical}, both of which will be kept up-to-date. We encourage developers to contribute through raising issues, making pull requests, joining the discord, or getting in touch with us directly.
+
 \end{document}
+
 
 % EXTRA
 
