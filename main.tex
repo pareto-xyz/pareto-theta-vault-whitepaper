@@ -215,12 +215,28 @@ Given the optimal portfolio $(x^*, y^*)$ using Equation~\ref{eq:rebalance:soluti
 \label{sec:management}
 
 Pareto RTVs designate a special address ``keeper'' whose role is to manage the vault. Keepers are responsible for deploying new vaults each round and rolling over liquidity from the last vault. Practically, these actions will be automated as two smart contract calls.
+The keeper is also responsible for choosing algorithms to decide the strike, implied volatility, and RMM-01 transaction fee: three important parameters that affect the yield users receive. 
 
-The keeper is also responsible for choosing algorithms to decide the strike, implied volatility, and RMM-01 transaction fee: three important parameters that affect the yield users receive. We describe each of these below.
+\textbf{Implied Volatility Selection}$\quad$ The best choice for the implied volatility of a RMM-01 pool is the realized volatility in the broader market, which by definition, is unknown for a future period of time. 
+Best practice is to choose implied volatility using realized volatility from recent history.
+There are two techniques to do so. First, one can estimate volatility from historical data. The challenge of this approach is sensitivity to hyperparameter choices such as the sampling period and frequency, the price information (e.g. close-to-close vs. high-low), and the definition of volatility (e.g. Parkinson vs Rogers-Satchell). 
+It is difficult to determine what is ``best'' despite different settings effecting the estimate significantly. 
 
-\textbf{Strike Selection}$\quad$ TODO.
+The second approach is to back-derive volatility from a large marketplace of calls and puts through the Black-Scholes model. 
+In traditional finance, this is popularly done by VIX and emulated for DeFi through Deribit DVOL and similar services.
+DVOL in particular, is an attractive choice given its large market share in DeFi options at the time of publication.
+While the first approach can be done online using Uniswap-v3 TWAP prices for instance, the second approach cannot as DVOL is not available through an oracle. 
 
-\textbf{Volatility Selection}$\quad$ TODO.
+\textbf{Strike Selection}$\quad$ Having selected implied volatility $\sigma$, Pareto RTVs select the strike price on-chain. 
+This is done by the keeper choosing a fixed delta value (at contract deployment; the value can be adjusted by the keeper at any time for the next round). For instance, Pareto defaults to $\Delta = 0.2$ ($\Delta$ varies between 0 and 1). 
+A larger $\Delta$  represents a more risky strategy as strike is likely closer to the current spot price. 
+
+Given $\sigma$ and $\Delta$, the appropriate strike price under Black-Scholes can be computed by: 
+\begin{equation}
+  K = S \exp \left\{ \frac{\tau \sigma^2}{2} - \sigma \sqrt{\tau} \cdot \Phi^{-1}(\Delta) \right\}
+  \label{eq:strike}
+\end{equation}
+Equation~\ref{eq:strike} can be efficiently implemented on-chain using Primitive's\newline \texttt{CumulativeNormalDistribution.sol} contract which implements the inverse CDF for a standard Normal, along with \texttt{ABDKMath64x64.sol} for exponentiation.
 
 \textbf{Gamma Selection}$\quad$ TODO.
 
