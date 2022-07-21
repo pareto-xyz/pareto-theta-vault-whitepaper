@@ -41,7 +41,7 @@ Beyond covered calls, an ecosystem of efficient and secure options vaults can be
 
 This paper is a technical introduction to Pareto Replicating Theta Vaults, a redesign of the yield instrument popularized by Ribbon Finance, ThetaNuts, Friktion, among many others. We describe how to construct Theta Vaults on top of replicating market makers (RMMs), in which selling a covered call is equivalent to being a liquidity provider for an AMM. Our primary hypothesis is that the ability of RMMs to replicate a wide array of structured products can be used to design an options ecosystem with token composability as a first-class citizen. For Theta Vaults, RMMs offer a permission-less and auction-free solution that users may find attractive. In the following sections, we provide background information then present the mechanism underlying the Replicating Theta Vault (RTV).
 
-\paragraph{[6/15/22]} The alpha product for Pareto RTVs is currently under development. Please reach out to \texttt{team@paretolabs.xyz} if you have any questions.
+The alpha product for Pareto RTVs is currently under development. Please reach out to \texttt{team@paretolabs.xyz} if you have any questions.
 
 \section{Background}
 
@@ -211,7 +211,7 @@ DVOL in particular, is an attractive choice given Deribit's large market share i
 While the first approach can be done online using Uniswap-v3 TWAP prices for instance, the second approach cannot as DVOL is not available through an oracle. 
 
 \textbf{Strike Selection}$\quad$ Having selected implied volatility $\sigma$, Pareto RTVs select the strike price on-chain. 
-This is done by the keeper choosing a fixed delta value (at contract deployment; the value can be adjusted by the keeper at any time for the next round). For instance, Pareto defaults to $\Delta = 0.2$, where $\Delta = \Phi(d_1)$, from Black Scholes in \ref{sec:options} and $\Delta$ varies between 0 and 1. 
+This is done by the keeper choosing a fixed delta value (at contract deployment; the value can be adjusted by the keeper at any time for the next round). For instance, Pareto defaults to $\Delta = 0.2$, where $\Delta = \Phi(d_1)$, from Black Scholes in \ref{sec:options}.
 A larger $\Delta$ represents a more risky strategy as strike is likely closer to the current spot price. 
 
 Given $\sigma$ and $\Delta$, the appropriate strike price under Black-Scholes can be computed by: 
@@ -221,7 +221,46 @@ Given $\sigma$ and $\Delta$, the appropriate strike price under Black-Scholes ca
 \end{equation}
 Equation~\ref{eq:strike} can be efficiently implemented on-chain using Primitive's\newline \texttt{CumulativeNormalDistribution.sol} contract which implements the inverse CDF for a standard Normal, along with \texttt{ABDKMath64x64.sol} for exponentiation.
 
-\textbf{Gamma Selection}$\quad$ TODO.
+\textbf{Gamma Selection}$\quad$
+
+As discussed in prior work \cite{angeris2021replicating}, replicating a covered call through an RMM fails to capture the Theta value without properly set fees.
+Unfortunately, there is no known closed-form expression that maps the Black-Scholes parameters of an RMM pool to the optimal fee choice.
+As such, we leverage simulations to model the relationship empirically.
+
+Figure~\ref{fig:fee:simulation} uses \url{https://github.com/primitivefinance/rmms-py} to simulate arbitrageurs and traders interacting with an external reference market and an RMM-01 pool expiring in one week. The figure contains 400 squares, each of which is an independent simulation at a different $\left(\frac{S}{K}\right)$ ratio and a different volatility ($\sigma$). The parameter $d\tau$ represents the time between agent actions: a smaller $d\tau$ is more faithful but also more expensive. Choosing $d\tau = 1$ hour required 8 hours of computation on 1 CPU.
+
+\begin{figure}[h!]
+    \centering
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{fee/simulation.png}
+        \caption{Simulation}
+        \label{fig:fee:simulation}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{fee/reconstruction.png}
+        \caption{Linear Model}
+        \label{fig:fee:reconstruction}
+    \end{subfigure}
+    \caption{Optimal fee selection. The left subfigure shows choices of optimal fees from simulations of week-long RMM-01 pools. The right subfigure fits a linear model to the simulated data, and plots the predictions.}
+    \label{fig:fee}
+\end{figure}
+
+We treat the simulation as a dataset $\{K_i, \sigma_i, 1 - \gamma_i\}_{i=1}^{400}$. Using this, we can model the function $f: (\mathbb{R}^+, \mathbb{R}^+) \rightarrow [0,1]$ from input variables (strike and volatility) to target variable (fee) using a linear regressor. In particular, we parameterize $f(K, \sigma; w_K, w_\sigma, b) = w_1 \cdot K + \sigma \cdot w_2 + b$ and choose the unknown parameters $\{w_K, w_\sigma, b\}$ by optimizing the objective
+\begin{equation}
+\mathcal{L}(w_K, w_\sigma, b) = \frac{1}{400}\sum_{i=1}^{400} \left(f(K_i, \sigma_i) - (1 - \gamma_i) \right)^2
+\label{eq:loss}
+\end{equation}
+using stochastic gradient descent. We do this one-time calculation off chain using \texttt{sci-kit learn}, arriving at the optimal values:
+\begin{align*}
+w^*_K &= 0.01885887419001178 \\
+w^*_\sigma &= 0.05105840835529893 \\
+b^* &= -0.04941277762457601
+\end{align*}
+Now, after choosing implied volatility and deriving strike as shown in the sub-sections above, the optimal fee can be approximated efficiently on-chain through $f(K_{\textup{curr}}, \sigma_{\textup{curr}}; w^*_K, w^*_\sigma, b^*)$: three constants, two multiplications, and two additions via \texttt{ABDKMath64x64.sol}.
 
 \textbf{Manual Override}$\quad$ Although selection is largely automated, the keeper reserves the right to manually override algorithmic choices to ensure vault success. At any point in the current round, the keeper may change the strike, implied volatility, or gamma for the \textit{next} round.
 
