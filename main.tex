@@ -205,15 +205,13 @@ Best practice is to choose implied volatility using realized volatility from rec
 There are two techniques to do so. First, one can estimate volatility from historical data. The challenges of this approach are twofold: past volatility doesn't capture expectations of future events, and, sensitivity to hyperparameter choices such as the sampling period and frequency, the price information (e.g. close-to-close vs. high-low), and the definition of volatility (e.g. Parkinson vs Rogers-Satchell). 
 It is difficult to determine what is ``best'' because different choices affect the estimate significantly. 
 
-% POINT - isn't Deribit DVOL a prediction of future volatility because the options expire in the future?
-
 The second approach is to back-derive volatility from a large marketplace of calls and puts using the Black-Scholes model. 
 In traditional finance, this is done by VIX and emulated for DeFi through Deribit DVOL and similar services.
 DVOL in particular, is an attractive choice given Deribit's large market share in DeFi options at the time of publication.
 While the first approach can be done online using Uniswap-v3 TWAP prices for instance, the second approach cannot as DVOL is not available through an oracle. 
 
 \textbf{Strike Selection}$\quad$ Having selected implied volatility $\sigma$, Pareto RTVs select the strike price on-chain. 
-This is done by the keeper choosing a fixed delta value (at contract deployment; the value can be adjusted by the keeper at any time for the next round). For instance, Pareto defaults to $\Delta = 0.2$ ($\Delta$ varies between 0 and 1). 
+This is done by the keeper choosing a fixed delta value (at contract deployment; the value can be adjusted by the keeper at any time for the next round). For instance, Pareto defaults to $\Delta = 0.2$, where $\Delta = \Phi(d_1)$, from Black Scholes in \ref{sec:options} and $\Delta$ varies between 0 and 1. 
 A larger $\Delta$ represents a more risky strategy as strike is likely closer to the current spot price. 
 
 Given $\sigma$ and $\Delta$, the appropriate strike price under Black-Scholes can be computed by: 
@@ -222,8 +220,6 @@ Given $\sigma$ and $\Delta$, the appropriate strike price under Black-Scholes ca
   \label{eq:strike}
 \end{equation}
 Equation~\ref{eq:strike} can be efficiently implemented on-chain using Primitive's\newline \texttt{CumulativeNormalDistribution.sol} contract which implements the inverse CDF for a standard Normal, along with \texttt{ABDKMath64x64.sol} for exponentiation.
-
-% shall we use the same delta notion as earlier in the paper?
 
 \textbf{Gamma Selection}$\quad$ TODO.
 
