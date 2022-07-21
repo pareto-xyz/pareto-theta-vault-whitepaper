@@ -194,27 +194,27 @@ where $V_0 = px_0 + y_0$ and $M = r_1 p + s_1$.
 
 Given the optimal portfolio $(x^*, y^*)$ using Equation~\ref{eq:rebalance:solution} and the starting portfolio $(x_0, y_0)$, it must be that either $x^* \geq x_0, y^* \leq y_0$ or $x^* \leq x_0, y^* \geq y_0$. In the first case, we can swap $x^* - x_0$ of token X on the reference market with price $p$. In the second case, we can swap $y^* - y_0$ of token Y. Finally, we can deposit $x^*, y^*$ into the RMM-01 pool at no loss.
 
-\subsection{Vault Management}
+\subsection{Vault Parameters}
 \label{sec:management}
 
 Pareto RTVs designate a special address ``keeper'' who manages the vault. Keepers are responsible for deploying new vaults each round and rolling over liquidity from the last vault. Practically, these actions will be automated as two smart contract calls.
 The keeper is also responsible for choosing algorithms to decide the strike, implied volatility, and RMM-01 transaction fee: three important parameters that affect the yield users receive. 
 
-\textbf{Implied Volatility Selection}$\quad$ The best choice for the implied volatility of a RMM-01 pool is the future realized volatility in the risky asset, which by definition, is unknown for a future period of time. 
+\textbf{Implied Volatility Selection}$\quad$ The best choice for the implied volatility of a RMM-01 pool is the future realized volatility in the risky asset, which by definition, is unknown. 
 Best practice is to choose implied volatility using realized volatility from recent history or recent expectations of future volatility.
-There are two techniques to do so. First, one can estimate volatility from historical data. The challenges of this approach are twofold: past volatility not capturing expectations of future events, and, sensitivity to hyperparameter choices such as the sampling period and frequency, the price information (e.g. close-to-close vs. high-low), and the definition of volatility (e.g. Parkinson vs Rogers-Satchell). 
+There are two techniques to do so. First, one can estimate volatility from historical data. The challenges of this approach are twofold: past volatility doesn't capture expectations of future events, and, sensitivity to hyperparameter choices such as the sampling period and frequency, the price information (e.g. close-to-close vs. high-low), and the definition of volatility (e.g. Parkinson vs Rogers-Satchell). 
 It is difficult to determine what is ``best'' because different choices affect the estimate significantly. 
 
 % POINT - isn't Deribit DVOL a prediction of future volatility because the options expire in the future?
 
-The second approach is to back-derive volatility from a large marketplace of calls and puts through the Black-Scholes model. 
+The second approach is to back-derive volatility from a large marketplace of calls and puts using the Black-Scholes model. 
 In traditional finance, this is done by VIX and emulated for DeFi through Deribit DVOL and similar services.
-DVOL in particular, is an attractive choice given its large market share in DeFi options at the time of publication.
+DVOL in particular, is an attractive choice given Deribit's large market share in DeFi options at the time of publication.
 While the first approach can be done online using Uniswap-v3 TWAP prices for instance, the second approach cannot as DVOL is not available through an oracle. 
 
 \textbf{Strike Selection}$\quad$ Having selected implied volatility $\sigma$, Pareto RTVs select the strike price on-chain. 
 This is done by the keeper choosing a fixed delta value (at contract deployment; the value can be adjusted by the keeper at any time for the next round). For instance, Pareto defaults to $\Delta = 0.2$ ($\Delta$ varies between 0 and 1). 
-A larger $\Delta$  represents a more risky strategy as strike is likely closer to the current spot price. 
+A larger $\Delta$ represents a more risky strategy as strike is likely closer to the current spot price. 
 
 Given $\sigma$ and $\Delta$, the appropriate strike price under Black-Scholes can be computed by: 
 \begin{equation}
