@@ -201,8 +201,8 @@ Pareto RTVs designate a special address ``keeper'' who manages the vault. Keeper
 The keeper is also responsible for choosing algorithms to decide the strike, implied volatility, and RMM-01 transaction fee: three important parameters that affect the yield users receive. 
 
 \textbf{Implied Volatility Selection}$\quad$ The best choice for the implied volatility of a RMM-01 pool is the future realized volatility in the risky asset, which by definition, is unknown for a future period of time. 
-Best practice is to choose implied volatility using realized volatility from recent history.
-There are two techniques to do so. First, one can estimate volatility from historical data. The challenge of this approach is sensitivity to hyperparameter choices such as the sampling period and frequency, the price information (e.g. close-to-close vs. high-low), and the definition of volatility (e.g. Parkinson vs Rogers-Satchell). 
+Best practice is to choose implied volatility using realized volatility from recent history or recent expectations of future volatility.
+There are two techniques to do so. First, one can estimate volatility from historical data. The challenges of this approach are twofold: past volatility not capturing expectations of future events, and, sensitivity to hyperparameter choices such as the sampling period and frequency, the price information (e.g. close-to-close vs. high-low), and the definition of volatility (e.g. Parkinson vs Rogers-Satchell). 
 It is difficult to determine what is ``best'' because different choices affect the estimate significantly. 
 
 % POINT - isn't Deribit DVOL a prediction of future volatility because the options expire in the future?
