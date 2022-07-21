@@ -1,6 +1,7 @@
 \documentclass[hidelinks, 12pt]{article}
 
 \usepackage{subcaption}
+\usepackage{comment}
 \usepackage{caption}
 \usepackage{fullpage}
 \usepackage[utf8]{inputenc}
@@ -137,42 +138,17 @@ The mechanism for ``Replicating Theta Vaults'' (RTV) is similar to traditional T
 
 % CHART - shall we add the diagram here?
 
-In each week, users seeking yield will deposit risky assets (e.g. ETH tokens) into the Pareto Vault. Each Primitive pool requires both a risky (ETH) and stable asset (USDC), so Pareto then swaps a portion of that for USDC, using a mechanism described in Section~\ref{sec:rebalance}.  
-Once a week, Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price, implied volatility, and Primitive pool trading fees (denoted in Primitive as "gamma") chosen to maximize risk-adjusted yield. In return, the pool gives LP tokens to the vault.
-Throughout the week, arbitrageurs will pay fees to swap tokens in the pool to bridge the price gap with external markets like Uniswap.
-These fees are directly reinvested into the pool's reserves.
-The fees earnt in the pool replicate the covered call premium \cite{angeris2021replicating}, giving users the payoff of selling covered call.
-At the end of the week, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically rolled over to a new RMM-01 pool with an updated strike price, volatility, gamma, and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
+Each week the mechanism goes as follows:
+
+\begin{enumerate}
+    \item \textbf{User Deposits} - new users seeking yield will deposit risky assets (e.g. ETH tokens) into the Pareto Vault. 
+    \item \textbf{Rebalancing} - each Primitive pool requires both a risky (ETH) and stable asset (USDC), so Pareto then swaps a portion of that for USDC, using a mechanism described in Section~\ref{sec:rebalance}.  
+    \item \textbf{Pareto creates a Primitive Pool and sets parameters} - once a week, Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price, implied volatility, and Primitive pool trading fees (denoted in Primitive as "gamma") chosen to maximize risk-adjusted yield. In return, the pool gives LP tokens to the vault.
+    \item \textbf{Premium is earned through arbitrage} - throughout the week, arbitrageurs will pay fees to swap tokens in the pool to bridge the price gap with external markets like Uniswap. These fees are directly reinvested into the pool's reserves. The fees earnt in the pool replicate the covered call premium \cite{angeris2021replicating}, giving users the payoff of selling covered calls.
+    \item \textbf{Rollover or Withdrawal} - at the end of the week, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically rolled over to a new RMM-01 pool with an updated strike price, volatility, gamma, and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
+\end{enumerate}
 
 No auction nor matching process is required. Technically, there are no buyers of the covered calls as no options are being sold, their payoffs only replicated. The LP's counterparties in an RMM are arbitrageurs. As long as arbitrageurs are making rational trades to close price gaps, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not.
-
-\subsection{User Flow}
-
-Users can take three primary actions (which are done through a frontend or an API): deposit liquidity, request a withdrawal, and complete a withdrawal.
-
-\textbf{Deposit Liquidity}$\quad$ Users can make deposits of any size in risky token only.
-The vault will handle swaps for stable tokens internally.
-Upon depositing, the users tokens will remain in a ``pending'' status until the next round.
-That is, the user's liquidity will \textit{not} be placed in the current vault immediately.
-Once the next vault is deployed, the users pending tokens will then be locked into the underlying RMM-01 pool.
-
-After receiving a deposit, the vault mints share tokens for the user. Pareto internally tracks share ownership and opts not to transfer them out of the contract.
-
-\textbf{Request a Withdrawal}$\quad$ Users cannot withdraw tokens instantaneously from the vault. They must wait until the current round completes. However, users can make a request to withdraw liquidity at any point. A request must be made prior to withdrawal completion. Users must specify how many shares they wish to withdraw (default is to withdraw all).
-
-\textbf{Complete a Withdrawal}$\quad$ After the round during which a withdrawal request is made, the user can complete a withdrawal. This will immediately transfer \textit{both} risky and stable tokens to the user's address, and burn the appropriate amount of share tokens held by the vault. Note that Pareto RTV's do not automatically convert user assets all back to risky token. Users will need to do this themselves.
-
-There are three special users: an owner, a keeper, a fee recipient. The owner is responsible for deploying the contract, and has control over setting the keeper, fee recipient, and other key vault parameters. The keeper is responsible for managing the vault each round (see Section~\ref{sec:management}). The fee recipient receives fees for vault operation (see Section~\ref{sec:fees}).
-
-\subsection{Vault Operations}
-
-The vault undergoes three primary actions (both of which occur prior to every round): deployment, fee payment, and rollover.
-
-\textbf{Deployment}$\quad$ At the end of a round, the vault prepares for the next round by deploying a new RMM-01 pool with a new strike price, implied volatility, and gamma set by the keeper based on current market prices (see Section~\ref{sec:management}). Only a small amount of capital is deposited into this new pool. Afterwards, liquidity is extracted from the current RMM-01 pool and transferred to the vault's ownership. % does ownership mean contract?
-
-\textbf{Fee Payment}$\quad$ Immediately following deployment, analysis is done to check if the vault made a profit. If so, a performance fee and a management are transferred from the vault to the chosen fee recipient. If the vault took a loss, no fees are taken.
-
-\textbf{Rollover}$\quad$ The risky and stable assets owned by the vault are rebalanced through swaps using the Uniswap-v3 router (see Section~\ref{sec:rebalance}), then placed in the newly deployed RMM-01 pool in exchange for LP tokens. A new round begins.
 
 \subsection{Rebalancing}
 \label{sec:rebalance}
@@ -218,25 +194,27 @@ where $V_0 = px_0 + y_0$ and $M = r_1 p + s_1$.
 
 Given the optimal portfolio $(x^*, y^*)$ using Equation~\ref{eq:rebalance:solution} and the starting portfolio $(x_0, y_0)$, it must be that either $x^* \geq x_0, y^* \leq y_0$ or $x^* \leq x_0, y^* \geq y_0$. In the first case, we can swap $x^* - x_0$ of token X on the reference market with price $p$. In the second case, we can swap $y^* - y_0$ of token Y. Finally, we can deposit $x^*, y^*$ into the RMM-01 pool at no loss.
 
-\subsection{Vault Management}
+\subsection{Vault Parameters}
 \label{sec:management}
 
-Pareto RTVs designate a special address ``keeper'' whose role is to manage the vault. Keepers are responsible for deploying new vaults each round and rolling over liquidity from the last vault. Practically, these actions will be automated as two smart contract calls.
+Pareto RTVs designate a special address ``keeper'' who manages the vault. Keepers are responsible for deploying new vaults each round and rolling over liquidity from the last vault. Practically, these actions will be automated as two smart contract calls.
 The keeper is also responsible for choosing algorithms to decide the strike, implied volatility, and RMM-01 transaction fee: three important parameters that affect the yield users receive. 
 
-\textbf{Implied Volatility Selection}$\quad$ The best choice for the implied volatility of a RMM-01 pool is the realized volatility in the broader market, which by definition, is unknown for a future period of time. 
-Best practice is to choose implied volatility using realized volatility from recent history.
-There are two techniques to do so. First, one can estimate volatility from historical data. The challenge of this approach is sensitivity to hyperparameter choices such as the sampling period and frequency, the price information (e.g. close-to-close vs. high-low), and the definition of volatility (e.g. Parkinson vs Rogers-Satchell). 
-It is difficult to determine what is ``best'' despite different settings effecting the estimate significantly. 
+\textbf{Implied Volatility Selection}$\quad$ The best choice for the implied volatility of a RMM-01 pool is the future realized volatility in the risky asset, which by definition, is unknown. 
+Best practice is to choose implied volatility using realized volatility from recent history or recent expectations of future volatility.
+There are two techniques to do so. First, one can estimate volatility from historical data. The challenges of this approach are twofold: past volatility doesn't capture expectations of future events, and, sensitivity to hyperparameter choices such as the sampling period and frequency, the price information (e.g. close-to-close vs. high-low), and the definition of volatility (e.g. Parkinson vs Rogers-Satchell). 
+It is difficult to determine what is ``best'' because different choices affect the estimate significantly. 
 
-The second approach is to back-derive volatility from a large marketplace of calls and puts through the Black-Scholes model. 
-In traditional finance, this is popularly done by VIX and emulated for DeFi through Deribit DVOL and similar services.
-DVOL in particular, is an attractive choice given its large market share in DeFi options at the time of publication.
+% POINT - isn't Deribit DVOL a prediction of future volatility because the options expire in the future?
+
+The second approach is to back-derive volatility from a large marketplace of calls and puts using the Black-Scholes model. 
+In traditional finance, this is done by VIX and emulated for DeFi through Deribit DVOL and similar services.
+DVOL in particular, is an attractive choice given Deribit's large market share in DeFi options at the time of publication.
 While the first approach can be done online using Uniswap-v3 TWAP prices for instance, the second approach cannot as DVOL is not available through an oracle. 
 
 \textbf{Strike Selection}$\quad$ Having selected implied volatility $\sigma$, Pareto RTVs select the strike price on-chain. 
 This is done by the keeper choosing a fixed delta value (at contract deployment; the value can be adjusted by the keeper at any time for the next round). For instance, Pareto defaults to $\Delta = 0.2$ ($\Delta$ varies between 0 and 1). 
-A larger $\Delta$  represents a more risky strategy as strike is likely closer to the current spot price. 
+A larger $\Delta$ represents a more risky strategy as strike is likely closer to the current spot price. 
 
 Given $\sigma$ and $\Delta$, the appropriate strike price under Black-Scholes can be computed by: 
 \begin{equation}
@@ -245,10 +223,11 @@ Given $\sigma$ and $\Delta$, the appropriate strike price under Black-Scholes ca
 \end{equation}
 Equation~\ref{eq:strike} can be efficiently implemented on-chain using Primitive's\newline \texttt{CumulativeNormalDistribution.sol} contract which implements the inverse CDF for a standard Normal, along with \texttt{ABDKMath64x64.sol} for exponentiation.
 
+% shall we use the same delta notion as earlier in the paper?
+
 \textbf{Gamma Selection}$\quad$ TODO.
 
 \textbf{Manual Override}$\quad$ Although selection is largely automated, the keeper reserves the right to manually override algorithmic choices to ensure vault success. At any point in the current round, the keeper may change the strike, implied volatility, or gamma for the \textit{next} round.
-
 
 \subsection{Fee Structure}
 \label{sec:fees}
@@ -260,16 +239,25 @@ The performance fee is a percentage of the yield whereas the management fee is a
 
 \subsection{Benefits}
 
-Beyond swapping buyers for arbitrageurs, there are additional benefits of the RTV design. First, Primitive can be daunting for retail users: it requires them to choose a strike price, expiry date, and implied volatility for their deposits. Implied volatility, in particular, is difficult to understand. Pareto aims to abstract away this complexity from users to help the Primitive ecosystem grow. Second, fees are paid throughout the round, rather than at a fixed point in time (e.g. an auction). For Pareto users, this allows us to offer a flexible system for withdrawing capital - twice a week rather than once a week in Traditional Theta Vault protocols. Further, since Theta Vaults flood the options market with many options contracts at the same time each week, this has unintended consequences in market dynamics. For one, the sudden increase in supply reduces the premiums of the options sold. This is not the case in RTVs because premiums (a.k.a. swap fees) are earned over time. Second, since participating in an RTV is providing liquidity to AMM and there is no counterparty, we understand this is legally distinct from buying or selling options.
+Swapping options buyers for arbitrageurs, results in several potential benefits of the RTV design:
+\begin{itemize}
+    \item \textbf{Uncapped Vault Sizes} - as Pareto isn't reliant on demand for options from market makers.
+    \item \textbf{Potentially Higher Yield} - given Pareto Vaults are not selling options during a fixed 1 hour window each week, this could increase premiums.    
+    \item \textbf{More Flexible Withdrawals} - in RMM pools, fees accumulate over time, rather than at a fixed point in time (e.g. an auction). Whilst in V1, we will only allow weekly withdrawals, in later versions, we will offer a flexible system for withdrawing capital - multiple times a week rather than once a week in Traditional Theta Vault protocols.
+    \item \textbf{Potentially Favorable Legal Treatment} - since participating in an RTV is providing liquidity to AMM and there is no counterparty, there may be favorable legal treatment.
+    \item \textbf{Blockchain outages do not have adverse effects} - RMMs are a form of AMM and have a continuous price function (unlike order books), so when there is a lack of liveness (e.g. Solana 2021, 2022), this does not excessively adversely impact market participants.
+\end{itemize}
+Separately, Pareto hopes to catalyze the growth of RMMs given RMMs can be daunting for retail users: they are required to choose a strike price, expiry date, and implied volatility for their deposits. Implied volatility, in particular, is not well understood. Pareto aims to abstract away this complexity from users to help the Primitive ecosystem grow. 
 
 \subsection{Challenges}
 \label{Challenges}
 
-Benefits aside, RTVs have their own challenges. First, like regular Theta Vaults, RTVs still require strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. Although RTVs no longer use oracles to determine liquidation, they still rely on oracles in vault creation and fee computation.
-
-Second, the solution to rebalancing in Section~\ref{sec:rebalance} would face significant slippage as the liquidity locked within the vault grows large. Potential solutions include dynamically routing swaps to find the best price in a manner similar to the 1inch protocol, or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}. More research will be conducted to better understand these solutions and their drawbacks.
-
-Finally, Primitive pools must achieve a minimum scale for accurate replication. We have seen that accurate replication can be achieved at very low levels of liquidity from the Primitive whitepaper using carefully chosen transaction fees, and this should be even lower on Layer 2's where gas costs are significantly lower. Pareto RTVs would benefit from simulations on- and off-chain to estimate the minimum scale for proper replication.
+Benefits aside, RTVs have their own challenges:
+\begin{itemize}
+    \item \textbf{External dependencies} - first, like regular Theta Vaults, RTVs still require strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. Although RTVs no longer use oracles to determine liquidation, they still rely on oracles in vault creation and fee computation.
+    \item \textbf{Rebalancing risk} - second, the solution to rebalancing in Section~\ref{sec:rebalance} would face significant slippage as the liquidity locked within the vault grows large. Potential solutions include dynamically routing swaps to find the best price in a manner similar to the 1inch protocol, or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}. More research will be conducted to better understand these solutions and their drawbacks.
+    \item \textbf{Payoff replication risk} - finally, Primitive pools must achieve a minimum scale for accurate replication. We have seen that accurate replication can be achieved at very low levels of liquidity from the Primitive whitepaper using carefully chosen transaction fees. These should be even lower on Layer 2's where gas costs are significantly lower. Pareto RTVs would benefit from simulations on- and off-chain to estimate the minimum scale for proper replication.
+\end{itemize}
 
 \section{Conclusion and Future Work}
 
@@ -291,6 +279,38 @@ We direct the reader to the code \url{https://github.com/pareto-xyz/pareto-theta
 
 \end{document}
 
+
+\begin{comment}
+
+\subsection{User Flow}
+
+Users can take three primary actions (which are done through a frontend or an API): deposit liquidity, request a withdrawal, and complete a withdrawal.
+
+\textbf{Deposit Liquidity}$\quad$ Users can make deposits of any size in risky token only.
+The vault will handle swaps for stable tokens internally.
+Upon depositing, the users tokens will remain in a ``pending'' status until the next round.
+That is, the user's liquidity will \textit{not} be placed in the current vault immediately.
+Once the next vault is deployed, the users pending tokens will then be locked into the underlying RMM-01 pool.
+
+After receiving a deposit, the vault mints share tokens for the user. Pareto internally tracks share ownership and opts not to transfer them out of the contract.
+
+\textbf{Request a Withdrawal}$\quad$ Users cannot withdraw tokens instantaneously from the vault. They must wait until the current round completes. However, users can make a request to withdraw liquidity at any point. A request must be made prior to withdrawal completion. Users must specify how many shares they wish to withdraw (default is to withdraw all).
+
+\textbf{Complete a Withdrawal}$\quad$ After the round during which a withdrawal request is made, the user can complete a withdrawal. This will immediately transfer \textit{both} risky and stable tokens to the user's address, and burn the appropriate amount of share tokens held by the vault. Note that Pareto RTV's do not automatically convert user assets all back to risky token. Users will need to do this themselves.
+
+There are three special users: an owner, a keeper, a fee recipient. The owner is responsible for deploying the contract, and has control over setting the keeper, fee recipient, and other key vault parameters. The keeper is responsible for managing the vault each round (see Section~\ref{sec:management}). The fee recipient receives fees for vault operation (see Section~\ref{sec:fees}).
+
+\subsection{Vault Operations}
+
+The vault undergoes three primary actions (both of which occur prior to every round): deployment, fee payment, and rollover.
+
+\textbf{Deployment}$\quad$ At the end of a round, the vault prepares for the next round by deploying a new RMM-01 pool with a new strike price, implied volatility, and gamma set by the keeper based on current market prices (see Section~\ref{sec:management}). Only a small amount of capital is deposited into this new pool. Afterwards, liquidity is extracted from the current RMM-01 pool and transferred to the vault's ownership. % does ownership mean contract?
+
+\textbf{Fee Payment}$\quad$ Immediately following deployment, analysis is done to check if the vault made a profit. If so, a performance fee and a management are transferred from the vault to the chosen fee recipient. If the vault took a loss, no fees are taken.
+
+\textbf{Rollover}$\quad$ The risky and stable assets owned by the vault are rebalanced through swaps using the Uniswap-v3 router (see Section~\ref{sec:rebalance}), then placed in the newly deployed RMM-01 pool in exchange for LP tokens. A new round begins.
+
+\end{comment}
 
 % EXTRA
 
