@@ -67,17 +67,33 @@ Given a CFMM with a specific invariant, what is the payoff to its liquidity prov
 \[V(p_x, p_y) = p_x\cdot x + p_y \cdot y = p_x (x + S(x)\cdot y_\psi(x))\]
 where $S(x)$ is the marginal price and the notation $y_\psi(x)$ represents solving for $y$ in terms of $x$ with respect to the invariant $\psi$.
 Altogether, $S(x)\cdot y_\psi(x)$ is the amount of token X we can get for $y$ units of token Y in the CFMM.
-The product invariant has a payoff function that suffers from divergence loss \cite{angeris2019analysis}. If the price does not deviate too much from the initial price that a LP deposited tokens at, the LP makes a profit vs. just holding the underlying asset. However, if the price changes, the LP loses money that scales with the magnitude of the price change. For LPs with a directional belief in the token price, such a payoff is not optimal.
+As we can see in \label{fig:ammpayoff} below, the product invariant has a payoff function that suffers from divergence loss \cite{angeris2019analysis}. If the price does not deviate too much from the initial price that a LP deposited tokens at, the LP makes a profit vs. just holding the underlying asset. However, if the price changes a lot, the LP loses money that scales with the magnitude of the price change. For LPs with a directional belief in the token price, such a payoff is not optimal.
 
-% CHART - insert AMM trading to LP function from product deck? Maybe add x*y = k under the chart
+\begin{figure}[h!]
+    \caption{Automated Market Makers: Constant Product Invariant (Trading Function) and Liquidity Provider Payoff Function}
+    \centering
+    \includegraphics[width=0.5\linewidth]{ammpayoff.png}
+    \caption{The CPMM Trading Function is $xy = k$, where x = reserves of Token X and y = reserves of Token Y.
+            The Liquidity Provider payoff function is $V(S) = 2\sqrt{Sk}$ where $S = spot price$ and $k = invariant$.}
+    \label{fig:ammpayoff}
+\end{figure}
 
 This begs the question: given a desired LP payoff function, what is the corresponding invariant to achieve that payoff function? We can imagine all kinds of interesting payoff functions that might be attractive to LPs seeking to hedge or take on risk.  Above, we showed how to derive a payoff function $V$ from an invariant $\psi$. "Replicating Market Makers" (RMMs) showed us how to do the opposite, that is derive an invariant from a payoff function.
 
-% CHART - insert RMM LP payoff function (V) 
-
 RMMs \cite{angeris2021replicating} show that for all payoff functions $V$ that are non-negative, concave, and 1-homogenous (this final condition is the strictest), one can derive an invariant by solving a convex optimization problem,
 \[ \psi_V(x, y) = \inf_{p_x, p_y} \{ p_x \cdot x + p_y \cdot y - V(p_x, p_y) \}. \]
-The method goes further to show that the payoff function and the invariant are Fenchel conjugates of one another, a surprising result. So, to enable LPs to achieve a payoff $V$, one can design a CFMM with the invariant $\psi_V$. We say that $\psi_V$ ``replicates'' the payoff $V$. In Section~\ref{sec:coveredcall}, we focus on an RMM that replicates the payoff of a covered call option.
+The method goes further to show that the payoff function and the invariant are Fenchel conjugates of one another, a surprising result. So, to enable LPs to achieve a payoff $V$, one can design a CFMM with the invariant $\psi_V$. We say that $\psi_V$ ``replicates'' the payoff $V$. The first RMM implementation, a liquidity provider payoff function that replicates the covered call options selling strategy is used to derive a corresponding trading function, as shown in \label{fig:rmmpayoff}. 
+
+\begin{figure}[h!]
+    \caption{Example Replicating Market Makers: RMM-01 Invariant (Trading Function) and Liquidity Provider Payoff Function (Covered Call Option)}
+    \centering
+    \includegraphics[width=0.5\linewidth]{rmmpayoff.png}
+    \caption{The RMM-01 Trading Function is $y - K\Phi(\Phi^{-1}(1-x) - \sigma\sqrt{\tau} = k$, where $x = reserves of Token X, y = reserves of Token Y, k = invariant, K = strike price, \sigma = implied volatility, \tau = time to maturity, \Phi = Gaussian CDF$.
+    The RMM-01 Liquidity Provider payoff function is $V(S) = S(1-\Phi(d_1)+K\Phi(d_2))$ where $S = spot price, K = strike, \Phi = Gaussian CDF, d_1 = \frac{\log(S/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}, d_2 = d_1 - \sigma\sqrt{\tau}$.}
+    \label{fig:rmmpayoff}
+\end{figure}
+
+In Section~\ref{sec:coveredcall}, we focus on this RMM that replicates the payoff of a covered call option selling strategy.
 
 \subsection{Options Review}
 \label{sec:options}
@@ -136,15 +152,19 @@ We begin with an overview of the mechanism followed by a thorough description of
 
 The mechanism for ``Replicating Theta Vaults'' (RTV) is similar to traditional Theta Vaults with a few important distinctions.
 
-% CHART - shall we add the diagram here?
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\linewidth]{userexperience.png}
+    \caption{Step by Step Weekly Operations of the Pareto Vaults.}
+    \label{fig:userexperience}
+\end{figure}
 
 Each week the mechanism goes as follows:
-
 \begin{enumerate}
-    \item \textbf{User Deposits} - new users seeking yield will deposit risky assets (e.g. ETH tokens) into the Pareto Vault. 
-    \item \textbf{Rebalancing} - each Primitive pool requires both a risky (ETH) and stable asset (USDC), so Pareto then swaps a portion of that for USDC, using a mechanism described in Section~\ref{sec:rebalance}.  
-    \item \textbf{Pareto creates a Primitive Pool and sets parameters} - once a week, Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price, implied volatility, and Primitive pool trading fees (denoted in Primitive as "gamma") chosen to maximize risk-adjusted yield. In return, the pool gives LP tokens to the vault.
+    \item \textbf{User Deposits} - new users seeking yield will deposit risky assets (e.g. ETH) into the Pareto Vault.       
+    \item \textbf{Pareto creates a Primitive Pool and sets parameters} - once a week, Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price, implied volatility, and Gamma (1 - Primitive pool trading fees) chosen to maximize risk-adjusted yield. In return, the pool gives LP tokens to the vault.
     \item \textbf{Premium is earned through arbitrage} - throughout the week, arbitrageurs will pay fees to swap tokens in the pool to bridge the price gap with external markets like Uniswap. These fees are directly reinvested into the pool's reserves. The fees earnt in the pool replicate the covered call premium \cite{angeris2021replicating}, giving users the payoff of selling covered calls.
+    \item \textbf{Rebalancing} - each Primitive pool requires both a risky (ETH) and stable asset (USDC), so Pareto then swaps a portion of that for USDC, using a mechanism described in Section~\ref{sec:rebalance}. When each RMM-01 pool expires, Pareto rebalances to ensure it has the correct ratio before rolling over assets.
     \item \textbf{Rollover or Withdrawal} - at the end of the week, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically rolled over to a new RMM-01 pool with an updated strike price, volatility, gamma, and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
 \end{enumerate}
 
