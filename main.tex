@@ -289,22 +289,22 @@ The performance fee is a percentage of the yield whereas the management fee is a
 
 Swapping options buyers for arbitrageurs, results in several potential benefits:
 \begin{itemize}
-    \item \textbf{Uncapped Vault Sizes} - as Pareto isn't reliant on demand for options from market makers.
-    \item \textbf{Potentially Higher Yield} - given Pareto Vaults are not selling options during a fixed 1 hour window each week, this could increase premiums.    
-    \item \textbf{More Flexible Withdrawals} - in RMM pools, fees accumulate over time, rather than at a fixed point in time (e.g. an auction). Whilst in V1, we will only allow weekly withdrawals, in later versions, we will offer a flexible system for withdrawing capital - multiple times a week rather than once a week in Traditional Theta Vault protocols.
-    \item \textbf{Potentially Favorable Legal Treatment} - since participating in an RTV is providing liquidity to AMM and there is no counterparty, there may be favorable legal treatment.
-    \item \textbf{Blockchain outages do not have adverse effects} - RMMs are a form of AMM and have a continuous price function (unlike order books), so when there is a lack of liveness (e.g. Solana 2021, 2022), this does not excessively adversely impact market participants.
+    \item \textbf{Uncapped Vault Sizes} - by the nature of replication, Pareto RTVs are not reliant on demand for options from market makers.
+    \item \textbf{Potentially Higher Yield} - given Pareto Vaults are not selling options during a fixed 1 hour window each week (e.g. auctions), this could increase premiums.
+    \item \textbf{More Flexible Withdrawals} - in RMM pools, fees accumulate over time, rather than at a fixed point in time (e.g. an auction). Whilst in V1, we will only allow weekly withdrawals; in later versions, we will offer a flexible system for withdrawing capital - multiple times a week rather than once a week in Traditional Theta Vaults.
+    \item \textbf{Potentially Favorable Legal Treatment} - since participating in an RTV is providing liquidity to AMM without a counterparty, there may be favorable legal treatment.
+    \item \textbf{Blockchain outages do not have adverse effects} - RMMs are a form of AMM and have a continuous price function (unlike order books), so  a lack of liveness (e.g. Solana 2021, 2022) may not excessively adversely impact market participants.
 \end{itemize}
 Separately, Pareto hopes to catalyze the growth of RMMs given RMMs can be daunting for retail users: they are required to choose a strike price, expiry date, and implied volatility for their deposits. Implied volatility, in particular, is not well understood. Pareto aims to abstract away this complexity from users to help the Primitive ecosystem grow. 
 
 \subsection{Challenges}
 \label{Challenges}
 
-Benefits aside, RTVs have their own challenges:
+Benefits aside, RTVs have their own unique challenges:
 \begin{itemize}
     \item \textbf{External dependencies} - first, like regular Theta Vaults, RTVs still require strike price to be set either automatically or manually. In the case of the former, this requires an oracle. Further, creating an RMM-01 pool requires setting the implied volatility of the underlying Black-Scholes model, for which the optimal value is the true volatility of the risky asset at the current time. This can be difficult to measure and requires an oracle as well. Although RTVs no longer use oracles to determine liquidation, they still rely on oracles in vault creation and fee computation.
-    \item \textbf{Rebalancing risk} - second, the solution to rebalancing in Section~\ref{sec:rebalance} would face significant slippage as the liquidity locked within the vault grows large. Potential solutions include dynamically routing swaps to find the best price in a manner similar to the 1inch protocol, or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}. More research will be conducted to better understand these solutions and their drawbacks.
-    \item \textbf{Payoff replication risk} - finally, Primitive pools must achieve a minimum scale for accurate replication. We have seen that accurate replication can be achieved at very low levels of liquidity from the Primitive whitepaper using carefully chosen transaction fees. These should be even lower on Layer 2's where gas costs are significantly lower. Pareto RTVs would benefit from simulations on- and off-chain to estimate the minimum scale for proper replication.
+    \item \textbf{Rebalancing risk} - second, the solution to rebalancing in Section~\ref{sec:rebalance} would face significant slippage as the liquidity locked within the vault grows large. Potential solutions include dynamically routing swaps to find the best price in a manner similar to the 1inch protocol, or prematurely rolling liquidity over to the next pool with intentional mispricing \cite{sterrett2022replicating}. More research is needed to better understand these solutions.
+    \item \textbf{Payoff replication risk} - finally, Primitive pools must achieve a minimum scale for accurate replication. We have seen that accurate replication can be achieved at very low levels of liquidity from the Primitive whitepaper using carefully chosen transaction fees. These should be even lower on Layer 2's where gas costs are significantly lower. Pareto RTVs would benefit from simulations on- and off-chain to estimate the minimum scale for proper replication of covered call premiums.
 \end{itemize}
 
 \section{Conclusion and Future Work}
