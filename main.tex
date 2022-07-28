@@ -67,14 +67,12 @@ Given a CFMM with a specific invariant, what is the payoff to its liquidity prov
 \[V(p_x, p_y) = p_x\cdot x + p_y \cdot y = p_x (x + S(x)\cdot y_\psi(x))\]
 where $S(x)$ is the marginal price and the notation $y_\psi(x)$ represents solving for $y$ in terms of $x$ with respect to the invariant $\psi$.
 Altogether, $S(x)\cdot y_\psi(x)$ is the amount of token X we can get for $y$ units of token Y in the CFMM.
-As we can see in \label{fig:ammpayoff} below, the product invariant has a payoff function that suffers from divergence loss \cite{angeris2019analysis}. If the price does not deviate too much from the initial price that a LP deposited tokens at, the LP makes a profit vs. just holding the underlying asset. However, if the price changes a lot, the LP loses money that scales with the magnitude of the price change. For LPs with a directional belief in the token price, such a payoff is not optimal.
+As we can see in Figure~\ref{fig:ammpayoff} below, the product invariant has a payoff function that suffers from divergence loss \cite{angeris2019analysis}. If the price does not deviate too much from the initial price that a liquidity provider (LP) deposited tokens at, the LP makes a profit vs. just holding the underlying asset. However, if the price changes a lot, the LP loses money that scales with the magnitude of the price change. For LPs with a directional belief in the token price, such a payoff is not optimal.
 
 \begin{figure}[h!]
-    \caption{Automated Market Makers: Constant Product Invariant (Trading Function) and Liquidity Provider Payoff Function}
     \centering
-    \includegraphics[width=0.5\linewidth]{ammpayoff.png}
-    \caption{The CPMM Trading Function is $xy = k$, where x = reserves of Token X and y = reserves of Token Y.
-            The Liquidity Provider payoff function is $V(S) = 2\sqrt{Sk}$ where $S = spot price$ and $k = invariant$.}
+    \includegraphics[width=0.8\linewidth]{ammpayoff.png}
+    \caption{Automated Market Makers: Constant Product Invariant and Liquidity Provider Payoff Function. The CPMM trading function is $xy = k$ where $k$ is the invariant. The payoff function for a liquidity provider of this market can be simplified to $V(S) = 2\sqrt{Sk}$.}
     \label{fig:ammpayoff}
 \end{figure}
 
@@ -82,23 +80,20 @@ This begs the question: given a desired LP payoff function, what is the correspo
 
 RMMs \cite{angeris2021replicating} show that for all payoff functions $V$ that are non-negative, concave, and 1-homogenous (this final condition is the strictest), one can derive an invariant by solving a convex optimization problem,
 \[ \psi_V(x, y) = \inf_{p_x, p_y} \{ p_x \cdot x + p_y \cdot y - V(p_x, p_y) \}. \]
-The method goes further to show that the payoff function and the invariant are Fenchel conjugates of one another, a surprising result. So, to enable LPs to achieve a payoff $V$, one can design a CFMM with the invariant $\psi_V$. We say that $\psi_V$ ``replicates'' the payoff $V$. The first RMM implementation, a liquidity provider payoff function that replicates the covered call options selling strategy is used to derive a corresponding trading function, as shown in \label{fig:rmmpayoff}. 
+The method goes further to show that the payoff function and the invariant are Fenchel conjugates of one another. So, to enable LPs to achieve a payoff $V$, one can design a CFMM with the invariant $\psi_V$. We say that $\psi_V$ ``replicates'' the payoff $V$. The first RMM implementation, a liquidity provider payoff function that replicates the covered call options selling strategy is used to derive a corresponding trading function, as shown in Figure~\ref{fig:rmmpayoff}.
 
 \begin{figure}[h!]
-    \caption{Example Replicating Market Makers: RMM-01 Invariant (Trading Function) and Liquidity Provider Payoff Function (Covered Call Option)}
     \centering
-    \includegraphics[width=0.5\linewidth]{rmmpayoff.png}
-    \caption{The RMM-01 Trading Function is $y - K\Phi(\Phi^{-1}(1-x) - \sigma\sqrt{\tau} = k$, where $x = reserves of Token X, y = reserves of Token Y, k = invariant, K = strike price, \sigma = implied volatility, \tau = time to maturity, \Phi = Gaussian CDF$.
-    The RMM-01 Liquidity Provider payoff function is $V(S) = S(1-\Phi(d_1)+K\Phi(d_2))$ where $S = spot price, K = strike, \Phi = Gaussian CDF, d_1 = \frac{\log(S/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}, d_2 = d_1 - \sigma\sqrt{\tau}$.}
+    \includegraphics[width=0.8\linewidth]{rmmpayoff.png}
+    \caption{Example of a Replicating Market Maker: RMM-01 Invariant and Liquidity Provider Payoff Function. The RMM-01 trading function is $y - K\Phi(\Phi^{-1}(1-x) - \sigma\sqrt{\tau} = k$ where $k$ is  the invariant, $K$ the strike price, $\sigma$ the implied volatility, $\tau$ the time to maturity, and $\Phi$ a Gaussian CDF.
+    The RMM-01 Liquidity Provider payoff function is $V(S) = S(1-\Phi(d_1)+K\Phi(d_2))$ where $d_1 = \frac{\log(S/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}$, $d_2 = d_1 - \sigma\sqrt{\tau}$.}
     \label{fig:rmmpayoff}
 \end{figure}
-
-In Section~\ref{sec:coveredcall}, we focus on this RMM that replicates the payoff of a covered call option selling strategy.
 
 \subsection{Options Review}
 \label{sec:options}
 
-Before then, we review the basics of a covered call. An option is a derivative instrument, which gives the owner the right to buy or sell an underlying asset at a pre-determined price (its strike price). The buyer of an option pays a premium to the seller in exchange for that right.
+We review the basics of a covered call. An option is a derivative instrument, which gives the owner the right to buy or sell an underlying asset at a pre-determined price (its strike price). The buyer of an option pays a premium to the seller in exchange for that right.
 
 A \textit{call} option is an option with the right to buy an asset at a pre-determined ``strike price'' such that if the underlying asset price (also called the spot price) is above the strike, then the buyer may ``exercise'' the option, meaning purchase the underlying asset at the strike price. Critically, this is less than the spot price meaning the buyer immediately makes profit. It is not required for the seller to own the underlying asset upfront when selling a call. Only if the option is exercised must the seller purchase and transfer the underlying asset to the buyer. Additionally, options have expiry times after which the contract between the buyer and seller no longer holds. We focus on European options in which the buyer can only exercise at the expiry time, not before (as with the American option).
 
@@ -106,7 +101,7 @@ Pricing an option means setting the value of the premium to the expected value o
 \[\textup{premium} = p \Phi(d_1) - K e^{-rt} \Phi(d_2)\]
 where $d_1 = \left( \frac{\log(p/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}\right)$ and $d_2 = d_1 - \sigma\sqrt{\tau}$. Notation-wise, $p$ is the spot price, $K$ the strike price, $\tau = T-t$ where $T$ is the expiry time and $t$ the current time, $r$ the risk-free rate (assumed as constant), $\sigma$ the implied volatility (assumed as constant), $\Phi$ is the cumulative distribution function for a standard normal distribution and $\Phi^{-1}$ its inverse..
 
-A property of options is that their value decreases as time approaches the expiry time, also called ``Theta decay''. Intuitively, an option with more time until expiry has more potential for favorable price fluctuation, which is valuable to the buyer (e.g. it could be that tomorrow the price of a call option exceeds the strike at which point the buyer can exercise). This benefit is priced into the Black-Scholes model, and hence priced into the premium paid by the buyer.
+A property of options is that their value decreases as time approaches the expiry time, also called ``Theta decay''. Intuitively, an option with more time until expiry has more potential for favorable price fluctuation, which is valuable to the buyer (e.g. it could be that tomorrow the price of a call option exceeds the strike at which point the buyer can exercise). This benefit is priced into Black-Scholes, and hence priced into the premium paid by the buyer.
 % That expiry time ($\tau = 0$), the theta value is zero.
 
 % CHART - insert chart showing theta decay in action?
@@ -118,7 +113,7 @@ A property of options is that their value decreases as time approaches the expir
     \label{fig:covercall}
 \end{figure}
 
-Finally, a \textit{covered call} is a structured product in which one sells a call option but also owns the underlying asset, thereby ``covering'' the call position if it is exercised (see Figure~\ref{fig:covercall}). Intuitively, selling a covered call bounds the seller's upside in return for premium. The seller is guaranteed to earn premium paid by the buyer but loses upside if the spot price exceeds the strike price. In other words, the seller's potential gains from the underlying asset appreciating is capped. As such, covered calls are not considered very risky products. A common strategy is to sell ``out-the-money'' covered calls, meaning the strike price is above the current spot price. Here, the seller is betting that price will not increase past the strike in return for a premium whereas the buyer has a directional view that the price will exceed the strike. One can also view a covered call as a hedge against the long position on the underlying.
+Finally, a \textit{covered call} is a structured product in which one sells a call option but also owns the underlying asset, thereby ``covering'' the call position if it is exercised (see Figure~\ref{fig:covercall}). Intuitively, selling a covered call bounds the seller's upside in return for premium. The seller is guaranteed to earn premium paid by the buyer but loses upside if the spot price exceeds the strike price. In other words, the seller's potential gains from the underlying asset appreciating is capped. As such, covered calls are not considered very risky products. A common strategy is to sell ``out-the-money'' covered calls, meaning the strike is above the current spot. Here, the seller is betting that price will not increase past the strike in return for a premium whereas the buyer has a directional view that the price will exceed the strike. One can also view a covered call as a hedge against the long position on the underlying.
 
 \subsection{Replicating Black-Scholes Covered Calls}
 \label{sec:coveredcall}
@@ -150,22 +145,20 @@ We begin with an overview of the mechanism followed by a thorough description of
 
 \subsection{Mechanism Overview}
 
-The mechanism for ``Replicating Theta Vaults'' (RTV) is similar to traditional Theta Vaults with a few important distinctions.
-
+The mechanism for ``Replicating Theta Vaults'' (RTV) is similar to traditional Theta Vaults with a few important distinctions. Each week the mechanism goes as follows:
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.5\linewidth]{userexperience.png}
+    \includegraphics[width=0.8\linewidth]{userexperience.png}
     \caption{Step by Step Weekly Operations of the Pareto Vaults.}
     \label{fig:userexperience}
 \end{figure}
 
-Each week the mechanism goes as follows:
 \begin{enumerate}
-    \item \textbf{User Deposits} - new users seeking yield will deposit risky assets (e.g. ETH) into the Pareto Vault.       
+    \item \textbf{User Deposits} - new users seeking yield will deposit risky assets (e.g. ETH) into the Pareto Vault. Users do not need to deposit stable assets (e.g. USDC).
     \item \textbf{Pareto creates a Primitive Pool and sets parameters} - once a week, Pareto will deposit these assets into a Primitive RMM-01 pool with a one week expiry and a set strike price, implied volatility, and Gamma (1 - Primitive pool trading fees) chosen to maximize risk-adjusted yield. In return, the pool gives LP tokens to the vault.
-    \item \textbf{Premium is earned through arbitrage} - throughout the week, arbitrageurs will pay fees to swap tokens in the pool to bridge the price gap with external markets like Uniswap. These fees are directly reinvested into the pool's reserves. The fees earnt in the pool replicate the covered call premium \cite{angeris2021replicating}, giving users the payoff of selling covered calls.
+    \item \textbf{Premium is earned through arbitrage} - throughout the week, arbitrageurs will pay fees to swap tokens in the pool to bridge the price gap with external markets like Uniswap. The fees earnt in the pool replicate the covered call premium \cite{angeris2021replicating}, giving users the payoff of selling covered calls.
     \item \textbf{Rebalancing} - each Primitive pool requires both a risky (ETH) and stable asset (USDC), so Pareto then swaps a portion of that for USDC, using a mechanism described in Section~\ref{sec:rebalance}. When each RMM-01 pool expires, Pareto rebalances to ensure it has the correct ratio before rolling over assets.
-    \item \textbf{Rollover or Withdrawal} - at the end of the week, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically rolled over to a new RMM-01 pool with an updated strike price, volatility, gamma, and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over liquidity ad infinitum.
+    \item \textbf{Rollover or Withdrawal} - at the end of the week, the RMM-01 pool expires, and liquidity is either withdrawn by Pareto users or automatically rolled over to a new RMM-01 pool with an updated strike price, volatility, gamma, and an expiry date one week ahead. Much like Theta Vaults, RTVs continue to roll over ad infinitum.
 \end{enumerate}
 
 No auction nor matching process is required. Technically, there are no buyers of the covered calls as no options are being sold, their payoffs only replicated. The LP's counterparties in an RMM are arbitrageurs. As long as arbitrageurs are making rational trades to close price gaps, LPs will closely replicate the expected payoff. In other words, a single RTV can grow as large as the spot market for the risky asset in question. Whereas Theta Vaults are bounded by the amount of matched options, RTVs are not.
@@ -294,7 +287,7 @@ The performance fee is a percentage of the yield whereas the management fee is a
 
 \subsection{Benefits}
 
-Swapping options buyers for arbitrageurs, results in several potential benefits of the RTV design:
+Swapping options buyers for arbitrageurs, results in several potential benefits:
 \begin{itemize}
     \item \textbf{Uncapped Vault Sizes} - as Pareto isn't reliant on demand for options from market makers.
     \item \textbf{Potentially Higher Yield} - given Pareto Vaults are not selling options during a fixed 1 hour window each week, this could increase premiums.    
