@@ -34,7 +34,6 @@ Traditionally, Theta Vaults face two main challenges: first, the yield is capped
 In this paper, we present a design for Theta Vaults built on top of replicating market makers (RMMs), an extension of automated market makers that replicates a Black-Scholes covered call payoff.
 We show this ``Replicating Theta Vault'', or RTV design precisely addresses the stated challenges.
 Beyond covered calls, an ecosystem of efficient and secure options vaults can be built by a similar replication technique.
-% I'm not sure that Ribbon requires an Oracle, it depends if Opyn's oTokens do, I need to check this.
 \end{abstract}
 
 \section{Preface}
@@ -58,7 +57,6 @@ In this case, the marginal price is simply $\left(\frac{y}{x}\right)$.
 Other invariants include the arithmetic sum ($\psi = x + y$) along with more complex ``mixtures'' of sum and product invariants such as Yieldspace \cite{niemerg2020yieldspace} or Curve \cite{egorov2021automatic}.
 
 CFMMs and the broader class of AMMs, stand as an alternative to more traditional orderbook markets that require matching between buyers and sellers at various prices. CFMMs require no middlemen, expose transparent prices, have efficiency benefits as trades execute immediately, are oracle-free and hence less vulnerable to malicious actors, and are more robust under black-swan events \cite{chitra2021liveness}. Due to these advantages, CFMMs have grown to dominate the on-chain swap market, with Uniswap being the largest DEX and fourth largest exchange.
-% Much more can be said about CFMMs, including impermanent loss and the structure of trading fees, but for this discussion, we recommend reading \cite{angeris2019analysis}.
 
 \subsection{Replicating Market Makers}
 \label{sec:rmm}
@@ -102,9 +100,6 @@ Pricing an option means setting the value of the premium to the expected value o
 where $d_1 = \left( \frac{\log(p/K) + (\sigma^2/2)\tau}{\sigma\sqrt{\tau}}\right)$ and $d_2 = d_1 - \sigma\sqrt{\tau}$. Notation-wise, $p$ is the spot price, $K$ the strike price, $\tau = T-t$ where $T$ is the expiry time and $t$ the current time, $r$ the risk-free rate (assumed as constant), $\sigma$ the implied volatility (assumed as constant), $\Phi$ is the cumulative distribution function for a standard normal distribution and $\Phi^{-1}$ its inverse..
 
 A property of options is that their value decreases as time approaches the expiry time, also called ``Theta decay''. Intuitively, an option with more time until expiry has more potential for favorable price fluctuation, which is valuable to the buyer (e.g. it could be that tomorrow the price of a call option exceeds the strike at which point the buyer can exercise). This benefit is priced into Black-Scholes, and hence priced into the premium paid by the buyer.
-% That expiry time ($\tau = 0$), the theta value is zero.
-
-% CHART - insert chart showing theta decay in action?
 
 \begin{figure}[h!]
     \centering
@@ -352,7 +347,7 @@ There are three special users: an owner, a keeper, a fee recipient. The owner is
 
 The vault undergoes three primary actions (both of which occur prior to every round): deployment, fee payment, and rollover.
 
-\textbf{Deployment}$\quad$ At the end of a round, the vault prepares for the next round by deploying a new RMM-01 pool with a new strike price, implied volatility, and gamma set by the keeper based on current market prices (see Section~\ref{sec:management}). Only a small amount of capital is deposited into this new pool. Afterwards, liquidity is extracted from the current RMM-01 pool and transferred to the vault's ownership. % does ownership mean contract?
+\textbf{Deployment}$\quad$ At the end of a round, the vault prepares for the next round by deploying a new RMM-01 pool with a new strike price, implied volatility, and gamma set by the keeper based on current market prices (see Section~\ref{sec:management}). Only a small amount of capital is deposited into this new pool. Afterwards, liquidity is extracted from the current RMM-01 pool and transferred to the vault's ownership.
 
 \textbf{Fee Payment}$\quad$ Immediately following deployment, analysis is done to check if the vault made a profit. If so, a performance fee and a management are transferred from the vault to the chosen fee recipient. If the vault took a loss, no fees are taken.
 
@@ -360,17 +355,3 @@ The vault undergoes three primary actions (both of which occur prior to every ro
 
 \end{comment}
 
-% EXTRA
-
-% Beyond this, there are several important design elements:
-% \begin{itemize}
-%     \item Deposit and withdrawal times: Pareto Vaults will deposit and withdraw from Primitive RMM-01 pools twice a week - each Tuesday and Friday at [5pm UTC]. Any user that wishes to withdraw at that time, must input their request with the Pareto protocol beforehand. Limiting withdrawals to twice weekly improves gas efficiency. As we expand to L2s, we hope to offer more frequent deposit and withdrawal opportunities.
-%     \item Vault Tokens: Initially, we will offer only a ETH-USDC vault. Once Pareto launches on mainnet, we will expand our offering to other Top 20 tokens.
-%     \item Multi Token Deposits: In the Alpha, users will have to deposit ETH and USDC, this creates friction for users and over time, we plan to remove the need for users to deposit USDC.
-%     \item Receipt Tokens: Users will not receive vault tokens by default, however we will reconsider this over time.
-%     \item Rebalancing: When a RMM-01 vault expires, all assets will be either the risky asset (e.g. ETH) or the stable asset (e.g. USDC). However, when depositing in a new pool, one needs both risky and stable assets. Our initial approach to handling this is initiating mispriced pools. This is discussed in further detail in \ref{Challenges} [Add more data].
-%     \item Expiry Date Selection: Pools will expire each Friday at [5pm UTC].
-%     \item Strike Selection: [TBD]
-%     \item Implied Volatility Selection: [TBD]
-%     \item Pool Fees Selection: [TBD]
-% \end{itemize}
